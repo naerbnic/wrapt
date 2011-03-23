@@ -1,0 +1,157 @@
+Wrapt -- a cross language binary graph file format
+==================================================
+
+There are dozens of data-language formats right now being used to
+support data driven programs, such as XML and JSON. These formats are usually
+satisfactory for small sets of configuration data, however they are not
+designed to manage large amounts of data for several reasons:
+
+- To extract the data, the entire file must be read from disk and parsed.
+- The data normally lives entirely in memory, having no inherent backing.
+- Most formats provide a tree-based data model, where many in-process data
+  structures are better represented in a graph format.
+
+To accomodate large graph data files, Wrapt was defined to fit this niche.
+
+File Format
+===========
+Types used:
+- uint8_t, uint16_t, uint32_t, uint64
+- wchar_t
+- Ref (8 byte index offset) or Ref<Type> if a particular type is required
+
+Header (16 bytes + n * sizeof(IndexEntry)):
+uint64 magic_number [[ASCII 'WraptDat']]
+uint64 data_offset [[offset to the data section. Also marks the end of the
+  index section]]
+IndexEntry index_entries[] [[See IndexEntry for more info]]
+
+Calculated values:
+Number of index entries: (data_offset - offset(index_entries)) / sizeof(IndexEntry)
+
+Size of index data entry i = (index_entries[i + 1].offset - index_entries[i].offset), or (FILE_LENGTH - index_entries[i].offset
+
+Position of index data entry i = (index_entries[i].offset + data_offset)
+
+IndexEntry (8 byte structure):
+uint64 offset : 61 [[ The top 61 bits of the data offset region. All data regions are aligned to 8 byte boundaries, so the bottom 3 bits will always be zero ]]
+DataType type : 3 [[ The bottom 3 bits are used for the types of data stored at thedata location ]]
+
+NOTE: Can also have datums be self encoding, to be flexible in the future
+DataType (3 bits):
+000 : Integer
+001 : Floating point
+010 : String
+011 : Boolean
+100 : Map
+101 : Array
+110 : Null // Needs offset, but can be duplicated by following record
+111 : Blob // Uninterpreted data
+
+Integer Data:
+Precision is defined by data size. Integers SHOULD be canonical, using only as many bytes as is necessary. Stored in 2-s compliment
+
+Floating Point Data:
+Precision is defined by data size. Acceptable right now is double precision (8 byte) and quad precision (16 byte)
+
+Boolean Data:
+Always 8 byte. Only valid values are 0 and 1. Other values MUST NOT be used.
+
+String Data:
+Null terminated UTF-8
+// Q: Is null termination enough?
+
+Map Data:
+Ref<Blob> hash_data
+repeated {
+  Ref<String> key
+  Ref data
+}
+
+Number of repeats caluclated from the data block size ((data - 8) / 16)
+
+Array Data:
+repeated {
+  Ref data
+}
+
+Number of repeats calculated from the data block size (data / 8)
+
+Null Data:
+No data. Needs offset, but no size associated.
+
+Blob Data:
+Uninterpreted data. Should contain no references to other objects in this file.
+
+API Definition:
+===============
+
+interface WraptFile {
+  /** Generically reads the object at index 0 */
+  WraptHandle readObject();
+
+  /** 
+   * Creates a new anonymous object in the file. Can be used in builders to
+   * add new data to the file. Will not be persisted if unreachable from
+   * the root object
+   */
+  WraptHandle createObject();
+
+  /**
+   * Writes out the root object to a Wrapt file at the location. This
+   * effectively garbage collects the objects unreachable from the root.
+   * All live WraptHandles will still be independent and valid (although
+   * internal indexes may be modified). Again, objects not reachable from
+   * the root will not be persisted until added.
+   */
+  void write(String path);
+}
+
+interface WraptHandle {
+  // Methods return the value requested or an
+  // approrpiate error condition if not (e.g. an exception or null
+  // return value as necessary. Should be highest precision available in
+  // this language
+
+  // Reading is lazy, and delayed until one of these methods are called.
+  // Initializing a builder invalidates this object, so these methods MAY
+  // fail
+  int asInt();
+  double asDouble();
+  boolean asBoolean();
+  String asString();
+  WraptMap asMap();
+  WraptArray asArray();
+  boolean isNull();
+  byte[] asBlob();
+
+  // Creates a new object that shares this object's reference, replacing it in
+  // this file. Can be used even if the object does not yet exist
+  WraptHandle createInt(int value);
+  WraptHandle createFloat(double value);
+  WraptHandle createBool(boolean b);
+  WraptHandle createString(String str);
+  WraptHandle createNull();
+  WraptMapBuilder createMap();
+  WraptArrayBuilder createArray();
+}
+
+interface WraptMap {
+  List<Pair<String, WraptHandle>> getEntries();
+  WraptHandle getValue(String str);
+  boolean contains(String str);
+}
+
+interface WraptArray {
+  List<WraptHandle> getElements();
+  WraptHandle getElement(int index);
+}
+
+interface WraptMapBuilder {
+  void put(String name, WraptHandle value);
+  WraptHandle build();
+}
+
+interface WraptArrayBuilder {
+  void add(WraptHandle object);
+  WraptHandle build();
