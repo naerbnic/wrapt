@@ -42,20 +42,13 @@ class WraptMapBuilder:
     self.__has_built = True
 
 
-class WraptMap:
-  def __init__(self, entry):
-    self.__entries = entry
+class WraptMap(dict):
+  def __init__(self, entries):
+    for key, value in entries:
+      super(WraptMap, self).__setitem__(key, value)
 
-  def getEntryCount(self):
-    return 1
-
-  def __getitem__(self, desired_key):
-    for key, handle in self.__entries:
-      if desired_key == key:
-        return handle
-
-  def items(self):
-    return iter(self.__entries)
+  def __setitem__(self, key, value):
+    raise ValueError("Cannot set a wrapt map directly")
 
 
 class WraptArrayMapFactory:

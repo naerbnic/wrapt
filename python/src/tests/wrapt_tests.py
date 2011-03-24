@@ -85,7 +85,7 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     wrapt_map = root.asMap()
 
     self.assertIsNot(wrapt_map, None)
-    self.assertEqual(wrapt_map.getEntryCount(), 1)
+    self.assertEqual(len(wrapt_map), 1)
     
     hello_handle = wrapt_map[keyname]
     self.assertIsNot(hello_handle, None)
@@ -142,7 +142,7 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     wrapt_map = root.asMap()
 
     self.assertIsNot(wrapt_map, None)
-    self.assertEqual(wrapt_map.getEntryCount(), 1)
+    self.assertEqual(len(wrapt_map), 2)
 
     hello_handle = self.assertHelloHandle(wrapt_map)
     goodbye_handle = self.assertGoodbyeHandle(wrapt_map)
@@ -160,12 +160,16 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     with self.assertRaises(ValueError):
       builder.build()
 
-  def test_mapItemsAreNotMutable(self):
+  def test_mapsAreImmutable(self):
     root = self.__file.getRootHandle()
     builder = root.createMap();
     self.insertHelloHandle(builder);
     builder.build()
 
     m = root.asMap()
+
+    with self.assertRaises(ValueError):
+      m['goodbye'] = 5;
+
     with self.assertRaises(TypeError):
       m.items()[0] = 5
