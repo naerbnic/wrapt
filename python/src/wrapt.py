@@ -373,4 +373,4 @@ class WraptOutputProcessor:
 
   def write(self, writer):
     type_id, value = self.__object_store.getObject(0)
-    writer.appendObject('int', value)
+    writer.appendObject(type_id, value)

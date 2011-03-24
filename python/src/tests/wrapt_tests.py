@@ -209,3 +209,6 @@ class WraptOutputProcessorTest(unittest.TestCase):
 
   def test_storeSimple2(self):
     self.assertSimpleStore('int', 6)
+
+  def test_storeSimple3(self):
+    self.assertSimpleStore('float', 2.0)
