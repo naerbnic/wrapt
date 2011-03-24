@@ -29,27 +29,30 @@ class WraptFile(object):
 class WraptMapBuilder:
   def __init__(self, dest_cell):
     self.__dest_cell = dest_cell
+    self.__entries = []
 
   def put(self, key, handle):
-    self.__key = key
-    self.__handle = handle
+    self.__entries.append((key, handle))
 
   def build(self):
-    self.__dest_cell.setObject('map', (self.__key, self.__handle))
+    self.__dest_cell.setObject('map', self.__entries)
 
 
 class WraptMap:
   def __init__(self, entry):
-    self.__key, self.__handle = entry
+    self.__entries = entry
 
   def getEntryCount(self):
     return 1
 
-  def get(self, key):
-    return self.__handle
+  def get(self, desired_key):
+    for key, handle in self.__entries:
+      if desired_key == key:
+        return handle
 
   def items(self):
-    return [(self.__key, self.__handle)]
+    # TODO(brianchin): Test that this value isn't mutable
+    return self.__entries
 
 
 class WraptArrayMapFactory:

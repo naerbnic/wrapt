@@ -101,3 +101,46 @@ class CreateLiveWraptFileTest(unittest.TestCase):
 
     self.assertTrue(foundHello,
         msg="Did not find {0} in map".format(keyname))
+
+  def test_SetRootToMapTwoElements(self):
+    newHandle1 = self.__file.createHandle()
+    newHandle1.createInt(12)
+
+    newHandle2 = self.__file.createHandle()
+    newHandle2.createFloat(2.0)
+
+    root = self.__file.getRootHandle()
+    builder = root.createMap()
+    builder.put('hello', newHandle1)
+    builder.put('goodbye', newHandle2)
+    builder.build()
+
+    wraptMap = root.asMap()
+
+    self.assertIsNot(wraptMap, None)
+    self.assertEqual(wraptMap.getEntryCount(), 1)
+    
+    helloHandle = wraptMap.get('hello')
+    self.assertIsNot(helloHandle, None)
+    self.assertEqual(helloHandle.asInt(), 12)
+
+    goodbyeHandle = wraptMap.get('goodbye')
+    self.assertIsNot(goodbyeHandle, None)
+    self.assertEqual(goodbyeHandle.asFloat(), 2.0)
+
+    foundHello = False
+    foundGoodbye = False
+    for key, handle in wraptMap.items():
+      if key == 'hello':
+        self.assertEqual(helloHandle, handle)
+        foundHello = True
+      elif key == 'goodbye':
+        self.assertEquals(goodbyeHandle, handle)
+        foundGoodbye = True
+      else:
+        self.fail(msg="Unexpected item found in map")
+
+    self.assertTrue(foundHello,
+        msg="Did not find hello in map")
+    self.assertTrue(foundGoodbye,
+        msg="Did not find goodbye in map")
