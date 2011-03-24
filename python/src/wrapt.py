@@ -30,12 +30,16 @@ class WraptMapBuilder:
   def __init__(self, dest_cell):
     self.__dest_cell = dest_cell
     self.__entries = []
+    self.__has_built = False
 
   def put(self, key, handle):
     self.__entries.append((key, handle))
 
   def build(self):
+    if self.__has_built:
+      raise ValueError("Tried to build a map twice on the same builder")
     self.__dest_cell.setObject('map', self.__entries)
+    self.__has_built = True
 
 
 class WraptMap:
@@ -51,8 +55,7 @@ class WraptMap:
         return handle
 
   def items(self):
-    # TODO(brianchin): Test that this value isn't mutable
-    return self.__entries
+    return iter(self.__entries)
 
 
 class WraptArrayMapFactory:

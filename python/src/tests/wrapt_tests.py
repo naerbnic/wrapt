@@ -151,8 +151,21 @@ class CreateLiveWraptFileTest(unittest.TestCase):
       ('hello', hello_handle),
       ('goodbye', goodbye_handle))
 
-  #def test_doubleBuildFails(self):
-  #  root = self._file.getRootHandle()
-  #  builder = root.createMap();
-  #  self.insertHelloHandle(builder);
-  #  build
+  def test_doubleBuildFails(self):
+    root = self.__file.getRootHandle()
+    builder = root.createMap();
+    self.insertHelloHandle(builder);
+    builder.build()
+
+    with self.assertRaises(ValueError):
+      builder.build()
+
+  def test_mapItemsAreNotMutable(self):
+    root = self.__file.getRootHandle()
+    builder = root.createMap();
+    self.insertHelloHandle(builder);
+    builder.build()
+
+    m = root.asMap()
+    with self.assertRaises(TypeError):
+      m.items()[0] = 5
