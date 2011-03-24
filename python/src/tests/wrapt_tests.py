@@ -31,8 +31,11 @@ class WraptHandleGetterTest(unittest.TestCase):
     self.assertFalse(self.__handle.isNull())
 
 class InMemoryObjectStore:
-  def __init__(self):
-    self.__store = [None]
+  def __init__(self, *args):
+    if len(args) == 0:
+      self.__store = [None]
+    else:
+      self.__store = args
 
   def getObject(self, index):
     return self.__store[index]
@@ -173,3 +176,10 @@ class CreateLiveWraptFileTest(unittest.TestCase):
 
     with self.assertRaises(TypeError):
       m.items()[0] = 5
+
+class WraptOutputProcessorTest(unittest.TestCase):
+  def setUp(self):
+    self.__processor = wrapt.WraptOutputProcessor()
+
+  def test_initProcessor(self):
+    pass

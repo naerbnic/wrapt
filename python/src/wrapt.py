@@ -365,3 +365,7 @@ class WraptLowLevelFile:
 
   def getObjectCount(self):
     return self.__max_index
+
+
+class WraptOutputProcessor:
+  pass
