@@ -16,14 +16,56 @@ class WraptFile(object):
     self.__object_store = object_store
     self.__wrapt_factory = wrapt_factory
   
-  def readRootHandle(self):
+  def getRootHandle(self):
     return self.__wrapt_factory.createHandle(self.__object_store, 0)
 
   def createHandle(self):
-    return self.__wrapt_factory(self.__object_store, self.__object_store.allocateIndex())
+    return self.__wrapt_factory.createHandle(self.__object_store, self.__object_store.allocateIndex())
 
   def write(self, filename):
     raise NotImplementedError()
+
+
+class WraptMapBuilder:
+  def __init__(self, dest_cell):
+    self.__dest_cell = dest_cell
+
+  def put(self, key, handle):
+    self.__handle = handle
+
+  def build(self):
+    self.__dest_cell.setObject('map', self.__handle)
+
+
+class WraptMap:
+  def __init__(self, handle):
+    self.__handle = handle
+
+  def getEntryCount(self):
+    return 1
+
+  def get(self, key):
+    return self.__handle
+
+  def items(self):
+    return [('hello', self.__handle)]
+
+
+class WraptArrayMapFactory:
+  def __init__(self, object_store):
+    self.__object_store = object_store
+
+  def createMapBuilder(self, object_cell):
+    return WraptMapBuilder(object_cell)
+
+  def createMap(self, rawMap):
+    return WraptMap(rawMap)
+
+
+class WraptHandleFactory:
+  def createHandle(self, object_store, index):
+    return WraptHandle(WraptObjectCell(object_store, index), WraptArrayMapFactory(object_store))
+
 
 class WraptObjectCell:
   def __init__(self, object_store, index):
@@ -36,13 +78,14 @@ class WraptObjectCell:
   def setObject(self, type_id, value):
     self.__object_store.setObject(self.__index, type_id, value)
 
+
 class WraptHandle:
   def __init__(self, object_cell, handle_factory):
     self.__object_cell = object_cell
     self.__handle_factory = handle_factory 
 
   def __getTypedObject(self, expected_type_id):
-    value, type_id = self.__getObject()
+    type_id, value = self.__object_cell.getObject()
     if type_id != expected_type_id:
       return None
     else:
@@ -67,7 +110,7 @@ class WraptHandle:
     return self.__handle_factory.createArray(self.__getTypedObject('array'))
 
   def isNull(self):
-    value, type_id = self.__object_cell.getObject()
+    type_id, value = self.__object_cell.getObject()
     return type_id == 'null'
 
   def asBlob(self):
@@ -86,10 +129,10 @@ class WraptHandle:
     self.__object_cell.setObject('boolean', value)
 
   def createMap(self):
-    return self.__handle_factory.createMapBuilder(object_builder)
+    return self.__handle_factory.createMapBuilder(self.__object_cell)
 
   def createArray(self):
-    return self.__handle_factory.createArrayBuilder(array_builder)
+    return self.__handle_factory.createArrayBuilder(self.__object_cell)
 
   def createNull(self):
     self.__object_cell.setObject('null', None)
@@ -110,15 +153,16 @@ class WraptObjectStore:
     else:
       return self.__object_file.getObject(index)
 
-  def setObject(self, index, type_id, data)
+  def setObject(self, index, type_id, data):
     if index >= self.__max_index:
       raise WraptIndexOutOfBoundsException
-    self.__overrides[index] = (data, type_id)
+    self.__overrides[index] = (type_id, data)
 
   def allocateIndex(self):
     result_index = self.__max_index
     self.__max_index += 1
     return result_index
+
 
 class ByteArrayBinaryFile:
   def __init__(self, __byte_array):
@@ -168,38 +212,32 @@ class WraptCachedObjectFile:
 
 
 class WraptObjectFile:
-  INT_TYPE = 0b000
-  FLOAT_TYPE = 0b001
-  STRING_TYPE = 0b010
-  BOOLEAN_TYPE = 0b011
-  MAP_TYPE = 0b100
-  ARRAY_TYPE = 0b101
-  NULL_TYPE = 0b110
-  BLOB_TYPE = 0b111
-
   def __init__(self, low_level_file):
     self.__low_level_file = low_level_file
 
-  def getObject(self, index, expected_typecode):
-    data, typecode = self.__low_level_file.readObject(index)
-    if typecode == INT_TYPE:
-      return (self.__readInt(data), 'int')
-    elif typecode == FLOAT_TYPE:
-      return (self.__readFloat(data), 'float')
-    elif typecode == STRING_TYPE:
-      return (self.__readString(data), 'string')
-    elif typecode == BOOLEAN_TYPE:
-      return (self.__readBoolean(data), 'boolean')
-    elif typecode == MAP_TYPE:
-      return (self.__readMap(data), 'map')
-    elif typecode == ARRAY_TYPE:
-      return (self.__readArray(data), 'array')
-    elif typecode == NULL_TYPE:
-      return (self.__readNull(data), 'null')
-    elif typecode == BLOB_TYPE:
-      return (self.__readBlob(data), 'blob')
+  def __getObjectValue(self, type_id, data):
+    if type_id == 'int':
+      return self.__readInt(data),
+    elif type_id == 'float':
+      return self.__readFloat(data)
+    elif type_id == 'string':
+      return self.__readString(data)
+    elif type_id == 'boolean':
+      return self.__readBoolean(data)
+    elif type_id == 'map':
+      return self.__readMap(data)
+    elif type_id == 'array':
+      return self.__readArray(data)
+    elif type_id == 'null':
+      return self.__readNull(data)
+    elif type_id == 'blob':
+      return self.__readBlob(data)
     else:
       raise WraptFileFormatException()
+
+  def getObject(self, index):
+    type_id, data = self.__low_level_file.getObject(index)
+    return (type_id, self.__getObjectValue(type_id, data))
 
   def getObjectCount(self):
     return self.__low_level_file.getObjectCount()
@@ -227,7 +265,7 @@ class WraptObjectFile:
       return False
     elif boolean_value == 1:
       return True
-    else
+    else:
       raise WraptFileFormatException()
     
   def __readMap(self, mapData):
@@ -257,6 +295,15 @@ class WraptLowLevelFile:
   HEADER_SIZE = 16
   INDEX_ENTRY_SIZE = 8
 
+  INT_TYPE = 0b000
+  FLOAT_TYPE = 0b001
+  STRING_TYPE = 0b010
+  BOOLEAN_TYPE = 0b011
+  MAP_TYPE = 0b100
+  ARRAY_TYPE = 0b101
+  NULL_TYPE = 0b110
+  BLOB_TYPE = 0b111
+
   def __init__(self, binfile):
     self.__bin_file = binfile; 
     self.__data_offset = None;
@@ -282,8 +329,30 @@ class WraptLowLevelFile:
     typecode = data & 0x7
     return offset, typecode
 
-  def readObject(self, index):
+  def __toTypeId(typecode):
+    if typecode == INT_TYPE:
+      return 'int'
+    elif typecode == FLOAT_TYPE:
+      return 'float'
+    elif typecode == STRING_TYPE:
+      return 'string'
+    elif typecode == BOOLEAN_TYPE:
+      return 'boolean'
+    elif typecode == MAP_TYPE:
+      return 'map'
+    elif typecode == ARRAY_TYPE:
+      return 'array'
+    elif typecode == NULL_TYPE:
+      return 'null'
+    elif typecode == BLOB_TYPE:
+      return 'blob'
+    else:
+      raise WraptFileFormatException()
+
+  def getObject(self, index):
     index_offset, typecode = self.__getIndexInfo(index);
+    type_id = self._toTypeId(typecode)
+
     try:
       next_offset, _ = self.__getIndexInfo(index + 1)
     except WraptIndexOutOfBoundsException:
@@ -292,7 +361,7 @@ class WraptLowLevelFile:
 
     object_data = self.__bin_file.readBytes(self.__data_offset + index_offset)
 
-    return object_data, typecode
+    return type_id, object_data
 
   def getObjectCount(self):
     return self.__max_index
