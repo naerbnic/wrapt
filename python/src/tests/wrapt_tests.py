@@ -74,73 +74,79 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     self.assertSetRootToMap('goodbye')
 
   def assertSetRootToMap(self, keyname):
-    newHandle = self.__file.createHandle()
-    newHandle.createInt(12)
+    new_handle = self.__file.createHandle()
+    new_handle.createInt(12)
 
     root = self.__file.getRootHandle()
     builder = root.createMap()
-    builder.put(keyname, newHandle)
+    builder.put(keyname, new_handle)
     builder.build()
 
-    wraptMap = root.asMap()
+    wrapt_map = root.asMap()
 
-    self.assertIsNot(wraptMap, None)
-    self.assertEqual(wraptMap.getEntryCount(), 1)
+    self.assertIsNot(wrapt_map, None)
+    self.assertEqual(wrapt_map.getEntryCount(), 1)
     
-    helloHandle = wraptMap.get(keyname)
-    self.assertIsNot(helloHandle, None)
-    self.assertEqual(helloHandle.asInt(), 12)
+    hello_handle = wrapt_map.get(keyname)
+    self.assertIsNot(hello_handle, None)
+    self.assertEqual(hello_handle.asInt(), 12)
 
-    foundHello = False
-    for key, handle in wraptMap.items():
-      if key == keyname:
-        self.assertEqual(helloHandle, handle)
-        foundHello = True
-      else:
-        self.fail(msg="Unexpected item found in map")
+    self.assertEntriesInMap(wrapt_map,
+      (keyname, hello_handle))
 
-    self.assertTrue(foundHello,
-        msg="Did not find {0} in map".format(keyname))
+  def insertHelloHandle(self, map_builder):
+    new_handle = self.__file.createHandle()
+    new_handle.createInt(12)
+    map_builder.put('hello', new_handle)
+
+  def insertGoodbyeHandle(self, map_builder):
+    new_handle = self.__file.createHandle()
+    new_handle.createFloat(2.0)
+    map_builder.put('goodbye', new_handle)
+
+  def assertHelloHandle(self, wrapt_map): 
+    hello_handle = wrapt_map.get('hello')
+    self.assertIsNot(hello_handle, None)
+    self.assertEqual(hello_handle.asInt(), 12)
+    return hello_handle
+
+  def assertGoodbyeHandle(self, wrapt_map):
+    goodbye_handle = wrapt_map.get('goodbye')
+    self.assertIsNot(goodbye_handle, None)
+    self.assertEqual(goodbye_handle.asFloat(), 2.0)
+    return goodbye_handle
+
+  def assertEntriesInMap(self, wrapt_map, *args):
+    found_array = [False] * len(args)
+    for key, value in wrapt_map.items():
+      inExpectedValues = False
+      for i, (expected_key, expected_value) in enumerate(args):
+        if key == expected_key:
+          self.assertEqual(value, expected_value)
+          found_array[i] = True
+          inExpectedValues = True
+      self.assertTrue(inExpectedValues,
+          msg="Unexpected entry {0} found".format(key))
+
+    for i, found in enumerate(found_array):
+      self.assertTrue(found,
+          msg="Did not find key {0} in map".format(args[i][0]))
 
   def test_SetRootToMapTwoElements(self):
-    newHandle1 = self.__file.createHandle()
-    newHandle1.createInt(12)
-
-    newHandle2 = self.__file.createHandle()
-    newHandle2.createFloat(2.0)
-
     root = self.__file.getRootHandle()
     builder = root.createMap()
-    builder.put('hello', newHandle1)
-    builder.put('goodbye', newHandle2)
+    self.insertHelloHandle(builder)
+    self.insertGoodbyeHandle(builder)
     builder.build()
 
-    wraptMap = root.asMap()
+    wrapt_map = root.asMap()
 
-    self.assertIsNot(wraptMap, None)
-    self.assertEqual(wraptMap.getEntryCount(), 1)
-    
-    helloHandle = wraptMap.get('hello')
-    self.assertIsNot(helloHandle, None)
-    self.assertEqual(helloHandle.asInt(), 12)
+    self.assertIsNot(wrapt_map, None)
+    self.assertEqual(wrapt_map.getEntryCount(), 1)
 
-    goodbyeHandle = wraptMap.get('goodbye')
-    self.assertIsNot(goodbyeHandle, None)
-    self.assertEqual(goodbyeHandle.asFloat(), 2.0)
+    hello_handle = self.assertHelloHandle(wrapt_map)
+    goodbye_handle = self.assertGoodbyeHandle(wrapt_map)
 
-    foundHello = False
-    foundGoodbye = False
-    for key, handle in wraptMap.items():
-      if key == 'hello':
-        self.assertEqual(helloHandle, handle)
-        foundHello = True
-      elif key == 'goodbye':
-        self.assertEquals(goodbyeHandle, handle)
-        foundGoodbye = True
-      else:
-        self.fail(msg="Unexpected item found in map")
-
-    self.assertTrue(foundHello,
-        msg="Did not find hello in map")
-    self.assertTrue(foundGoodbye,
-        msg="Did not find goodbye in map")
+    self.assertEntriesInMap(wrapt_map,
+      ('hello', hello_handle),
+      ('goodbye', goodbye_handle))
