@@ -45,7 +45,7 @@ class WraptMap:
   def getEntryCount(self):
     return 1
 
-  def get(self, desired_key):
+  def __getitem__(self, desired_key):
     for key, handle in self.__entries:
       if desired_key == key:
         return handle

@@ -87,7 +87,7 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     self.assertIsNot(wrapt_map, None)
     self.assertEqual(wrapt_map.getEntryCount(), 1)
     
-    hello_handle = wrapt_map.get(keyname)
+    hello_handle = wrapt_map[keyname]
     self.assertIsNot(hello_handle, None)
     self.assertEqual(hello_handle.asInt(), 12)
 
@@ -105,13 +105,13 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     map_builder.put('goodbye', new_handle)
 
   def assertHelloHandle(self, wrapt_map): 
-    hello_handle = wrapt_map.get('hello')
+    hello_handle = wrapt_map['hello']
     self.assertIsNot(hello_handle, None)
     self.assertEqual(hello_handle.asInt(), 12)
     return hello_handle
 
   def assertGoodbyeHandle(self, wrapt_map):
-    goodbye_handle = wrapt_map.get('goodbye')
+    goodbye_handle = wrapt_map['goodbye']
     self.assertIsNot(goodbye_handle, None)
     self.assertEqual(goodbye_handle.asFloat(), 2.0)
     return goodbye_handle
@@ -150,3 +150,9 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     self.assertEntriesInMap(wrapt_map,
       ('hello', hello_handle),
       ('goodbye', goodbye_handle))
+
+  #def test_doubleBuildFails(self):
+  #  root = self._file.getRootHandle()
+  #  builder = root.createMap();
+  #  self.insertHelloHandle(builder);
+  #  build
