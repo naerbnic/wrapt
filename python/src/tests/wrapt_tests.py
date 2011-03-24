@@ -66,13 +66,20 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     self.assertIs(handle.asBlob(), None)
     self.assertFalse(handle.isNull())
 
-  def test_setRootToMap(self):
+
+  def test_setRootToMapHello(self):
+    self.assertSetRootToMap('hello')
+
+  def test_setRootToMapGoodbye(self):
+    self.assertSetRootToMap('goodbye')
+
+  def assertSetRootToMap(self, keyname):
     newHandle = self.__file.createHandle()
     newHandle.createInt(12)
 
     root = self.__file.getRootHandle()
     builder = root.createMap()
-    builder.put('hello', newHandle)
+    builder.put(keyname, newHandle)
     builder.build()
 
     wraptMap = root.asMap()
@@ -80,18 +87,17 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     self.assertIsNot(wraptMap, None)
     self.assertEqual(wraptMap.getEntryCount(), 1)
     
-    helloHandle = wraptMap.get('hello')
+    helloHandle = wraptMap.get(keyname)
     self.assertIsNot(helloHandle, None)
     self.assertEqual(helloHandle.asInt(), 12)
 
     foundHello = False
     for key, handle in wraptMap.items():
-      if key == 'hello':
+      if key == keyname:
         self.assertEqual(helloHandle, handle)
         foundHello = True
       else:
         self.fail(msg="Unexpected item found in map")
 
-    self.assertTrue(foundHello, msg="Did not find 'hello' in map")
-
-    
+    self.assertTrue(foundHello,
+        msg="Did not find {0} in map".format(keyname))

@@ -31,15 +31,16 @@ class WraptMapBuilder:
     self.__dest_cell = dest_cell
 
   def put(self, key, handle):
+    self.__key = key
     self.__handle = handle
 
   def build(self):
-    self.__dest_cell.setObject('map', self.__handle)
+    self.__dest_cell.setObject('map', (self.__key, self.__handle))
 
 
 class WraptMap:
-  def __init__(self, handle):
-    self.__handle = handle
+  def __init__(self, entry):
+    self.__key, self.__handle = entry
 
   def getEntryCount(self):
     return 1
@@ -48,7 +49,7 @@ class WraptMap:
     return self.__handle
 
   def items(self):
-    return [('hello', self.__handle)]
+    return [(self.__key, self.__handle)]
 
 
 class WraptArrayMapFactory:
