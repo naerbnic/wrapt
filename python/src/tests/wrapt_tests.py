@@ -195,23 +195,17 @@ class WraptOutputProcessorTest(unittest.TestCase):
   def test_initProcessor(self):
     pass
 
-  def test__storeSimple1(self):
-    self.__store._setData(
-        ('int', 5))
+  def assertSimpleStore(self, type_id, value):
+    self.__store._setData((type_id, value))
     writer = InMemoryObjectWriter()
     self.__processor.write(writer)
     objects = writer.toList()
 
     self.assertEqual(len(objects), 1)
-    self.assertEqual(objects[0], ('int', 5))
+    self.assertEqual(objects[0], (type_id, value))
 
-  def test__storeSimple2(self):
-    self.__store._setData(
-        ('int', 6))
-    writer = InMemoryObjectWriter()
-    self.__processor.write(writer)
-    objects = writer.toList()
+  def test_storeSimple1(self):
+    self.assertSimpleStore('int', 5)
 
-    self.assertEqual(len(objects), 1)
-    self.assertEqual(objects[0], ('int', 6))
-
+  def test_storeSimple2(self):
+    self.assertSimpleStore('int', 6)
