@@ -62,13 +62,14 @@ Null terminated UTF-8
 // Q: Is null termination enough?
 
 Map Data:
+Ref<String> string_tag # For declaring the type of an object
 Ref<Blob> hash_data
 repeated {
   Ref<String> key
   Ref data
 }
 
-Number of repeats caluclated from the data block size ((data - 8) / 16)
+Number of repeats caluclated from the data block size ((data - 16) / 16)
 
 Array Data:
 repeated {
