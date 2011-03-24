@@ -31,11 +31,8 @@ class WraptHandleGetterTest(unittest.TestCase):
     self.assertFalse(self.__handle.isNull())
 
 class InMemoryObjectStore:
-  def __init__(self, *args):
-    if len(args) == 0:
+  def __init__(self):
       self.__store = [None]
-    else:
-      self.__store = args
 
   def getObject(self, index):
     return self.__store[index]
@@ -47,6 +44,9 @@ class InMemoryObjectStore:
     result_index = len(self.__store)
     self.__store.append(None)
     return result_index
+
+  def _setData(self, *args):
+    self.__store = list(args)
 
 class CreateLiveWraptFileTest(unittest.TestCase):
   def _createObjectStore(self):
@@ -177,9 +177,30 @@ class CreateLiveWraptFileTest(unittest.TestCase):
     with self.assertRaises(TypeError):
       m.items()[0] = 5
 
+class InMemoryObjectWriter:
+  def __init__(self):
+    self.__objects = []
+
+  def appendObject(self, type_id, value):
+    self.__objects.append((type_id, value))
+
+  def toList(self):
+    return list(self.__objects)
+
 class WraptOutputProcessorTest(unittest.TestCase):
   def setUp(self):
-    self.__processor = wrapt.WraptOutputProcessor()
+    self.__store = InMemoryObjectStore()
+    self.__processor = wrapt.WraptOutputProcessor(self.__store)
 
   def test_initProcessor(self):
     pass
+
+  def test__storeSimple(self):
+    self.__store._setData(
+        ('int', 5))
+    writer = InMemoryObjectWriter()
+    self.__processor.write(writer)
+    objects = writer.toList()
+
+    self.assertEqual(len(objects), 1)
+    self.assertEqual(objects[0], ('int', 5))
