@@ -195,7 +195,7 @@ class WraptOutputProcessorTest(unittest.TestCase):
   def test_initProcessor(self):
     pass
 
-  def test__storeSimple(self):
+  def test__storeSimple1(self):
     self.__store._setData(
         ('int', 5))
     writer = InMemoryObjectWriter()
@@ -204,3 +204,14 @@ class WraptOutputProcessorTest(unittest.TestCase):
 
     self.assertEqual(len(objects), 1)
     self.assertEqual(objects[0], ('int', 5))
+
+  def test__storeSimple2(self):
+    self.__store._setData(
+        ('int', 6))
+    writer = InMemoryObjectWriter()
+    self.__processor.write(writer)
+    objects = writer.toList()
+
+    self.assertEqual(len(objects), 1)
+    self.assertEqual(objects[0], ('int', 6))
+

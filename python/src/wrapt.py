@@ -369,7 +369,8 @@ class WraptLowLevelFile:
 
 class WraptOutputProcessor:
   def __init__(self, object_store):
-    pass
+    self.__object_store = object_store
 
   def write(self, writer):
-    writer.appendObject('int', 5)
+    type_id, value = self.__object_store.getObject(0)
+    writer.appendObject('int', value)
