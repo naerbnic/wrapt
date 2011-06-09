@@ -212,3 +212,27 @@ class WraptOutputProcessorTest(unittest.TestCase):
 
   def test_storeSimple3(self):
     self.assertSimpleStore('float', 2.0)
+
+  def createMapValue(self, tag, hash_data_index, refmap):
+    return wrapt.WraptRefMap(tag, hash_data_index, refmap)
+
+  def test_storeMap1(self):
+    mapValue = self.createMapValue('obj', 1, {'hello': 2})
+    intValue = 12
+
+    self.__store._setData(('map', mapValue), ('null', None), ('int', intValue))
+    writer = InMemoryObjectWriter()
+    self.__processor.write(writer)
+    objects = writer.toList()
+
+    type_id, value = objects[0]
+
+    self.assertEqual(type_id, 'map')
+
+    tag_index = value.getTagIndex()
+    self.assertEqual(objects[tag_index], ('string', 'obj'))
+    hash_data_index = value.getHashDataIndex()
+    self.assertEqual(objects[hash_data_index], ('null', None))
+    ((key_index, value_index),) = value.getMappings()
+    self.assertEqual(objects[key_index], ('string', 'hello'))
+    self.assertEqual(objects[value_index], ('int', intValue))

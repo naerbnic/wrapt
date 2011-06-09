@@ -1,5 +1,6 @@
 import threading
 import struct
+import itertools
 
 class WraptFileFormatException(Exception):
   pass
@@ -366,11 +367,121 @@ class WraptLowLevelFile:
   def getObjectCount(self):
     return self.__max_index
 
-
+# Writes data contained in a store to a writer.
 class WraptOutputProcessor:
   def __init__(self, object_store):
-    self.__object_store = object_store
+    self.__object_store = object_store    
 
   def write(self, writer):
-    type_id, value = self.__object_store.getObject(0)
-    writer.appendObject(type_id, value)
+    index_map = IndexAllocator(self.__object_store).allocate()
+
+    writer_allocations = [(output_index, store_index) 
+        for store_index, output_index in index_map.items()]
+
+    writer_allocations.sort()
+
+    for output_index, store_index in writer_allocations:
+      type_id, value = self.__object_store.getObject(store_index)
+      self.__write_object(type_id, value, output_index, index_map, writer)
+
+  def __write_object(self, type_id, value, base_index, index_map, writer):
+    if type_id == 'int':
+      writer.appendObject('int', value)
+    elif type_id == 'float':
+      writer.appendObject('float', value)
+    elif type_id ==  'map':
+      for new_type_id, value in value.getBaseObjects(base_index, index_map):
+        writer.appendObject(new_type_id, value)
+    elif type_id == 'null':
+      writer.appendObject('null', value)
+    else:
+      raise ValueError("Don't support type '{0}'".format(type_id))
+
+class IndexAllocator:
+  def __init__(self, object_store):
+    self.__object_store = object_store
+    self.__allocations = {}
+    self.__next_index = 0
+
+  def allocate(self):
+    self.__allocate_index(0)
+    return self.__allocations
+
+  def __allocate_index(self, index):
+    if index in self.__allocations:
+      return self.__allocations[index]
+
+    self.__allocations[index] = self.__next_index
+    type_id, value = self.__object_store.getObject(index)
+    self.__next_index += self.__get_index_size(type_id, value)
+    self.__allocate_contents(type_id, value)
+
+  def __get_index_size(self, type_id, value):
+    if type_id == 'map':
+      return value.getIndexCount()
+    elif type_id == 'float':
+      return 1
+    elif type_id == 'int':
+      return 1
+    elif type_id == 'null':
+      return 1
+    else:
+      raise ValueError("Does not support type '{0}'".format(type_id))
+
+  def __allocate_contents(self, type_id, value):
+    if type_id == 'float':
+      pass
+    elif type_id == 'int':
+      pass
+    elif type_id == 'map':
+      for next_index in value.getContentIndexes():
+        self.__allocate_index(next_index)
+      return
+    elif type_id == 'null':
+      pass
+    else:
+      raise ValueError("Does not support type '{0}'".format(type_id))
+
+
+class WraptRefMap:
+  def __init__(self, tag, hash_data_index, string_ref_map):
+    self.__tag = tag
+    self.__hash_data_index = hash_data_index
+    self.__string_ref_map = string_ref_map
+
+  def getIndexCount(self):
+    return 2 + len(self.__string_ref_map)
+
+  def getContentIndexes(self):
+    return itertools.chain(self.__string_ref_map.values(), [self.__hash_data_index])
+
+  def getBaseObjects(self, base_index, index_map):
+    field_list = list(self.__string_ref_map.items())
+
+    base_field_list = [(base_index + 2 + i, index_map[value_index])
+      for i, (key, value_index) in enumerate(field_list)]
+
+    field_objects = [('string', key) for (key, _) in field_list]
+      
+    return [
+      ('map', WraptBaseMap(
+        base_index + 1, #tag
+        index_map[self.__hash_data_index],
+        base_field_list)),
+      ('string', self.__tag)] + field_objects
+
+
+class WraptBaseMap:
+  def __init__(self, tag_index, hash_data_index, field_pairs):
+    self.__tag_index = tag_index
+    self.__hash_data_index = hash_data_index
+    self.__field_pairs = field_pairs
+
+  def getTagIndex(self):
+    return self.__tag_index
+
+  def getHashDataIndex(self):
+    return self.__hash_data_index
+
+  def getMappings(self):
+    return self.__field_pairs
