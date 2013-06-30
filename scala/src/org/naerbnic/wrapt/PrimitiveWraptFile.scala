@@ -12,13 +12,13 @@ class PrimitiveWraptFile private (
   lazy val index = Index.fromFile(channel, Header.Size)
   
   private def getBlockWithSize(dataOffset: Long, size: Int) = 
-    new PrimitiveWraptFile.FileBlock(dataOffset + header.dataOffset, size, channel)
+    Block.fromFile(channel, dataOffset + header.dataOffset, size)
   
   private def getBlockWithInlineSize(dataOffset: Long) = {
     val sizeBuffer = ByteBuffer.allocate(8)
     channel.read(sizeBuffer, dataOffset + header.dataOffset)
     val size = sizeBuffer.asLongBuffer().get(0)
-    new PrimitiveWraptFile.FileBlock(dataOffset + header.dataOffset + 8, size, channel)
+    Block.fromFile(channel, dataOffset + header.dataOffset + 8, size)
   }
   
   private def getBlock(entry: IndexEntry) = {
@@ -99,11 +99,5 @@ object PrimitiveWraptFile {
         None
       }
     }
-  }
-    
-  class FileBlock(fileOffset: Long, blockSize: Long, channel: FileChannel) extends Block {
-    override def size = blockSize
-    override def asByteBuffer() =
-      channel.map(MapMode.READ_ONLY, fileOffset, size)
   }
 }
