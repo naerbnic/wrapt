@@ -12,13 +12,13 @@ class PrimitiveWraptFile private (
   lazy val index = Index.fromFile(channel, Header.Size)
   
   private def getBlockWithSize(dataOffset: Long, size: Int) = 
-    new PrimitiveWraptFile.Block(dataOffset + header.dataOffset, size, channel)
+    new PrimitiveWraptFile.FileBlock(dataOffset + header.dataOffset, size, channel)
   
   private def getBlockWithInlineSize(dataOffset: Long) = {
     val sizeBuffer = ByteBuffer.allocate(8)
     channel.read(sizeBuffer, dataOffset + header.dataOffset)
     val size = sizeBuffer.asLongBuffer().get(0)
-    new PrimitiveWraptFile.Block(dataOffset + header.dataOffset + 8, size, channel)
+    new PrimitiveWraptFile.FileBlock(dataOffset + header.dataOffset + 8, size, channel)
   }
   
   private def getBlock(entry: IndexEntry) = {
@@ -86,7 +86,7 @@ object PrimitiveWraptFile {
     
     def asMap = {
       if (entry.entryType == IndexEntry.Type.MAP) {
-        Some(new PrimitiveMap(wraptFile.getBlock(entry)))
+        Some(new PrimitiveMap(wraptFile.getBlock(entry), wraptFile.stringTable))
       } else {
         None
       }
@@ -94,15 +94,16 @@ object PrimitiveWraptFile {
     
     def asBlob = {
       if (entry.entryType == IndexEntry.Type.BLOB) {
-        Some(new PrimitiveMap(wraptFile.getBlock(entry)))
+        Some(wraptFile.getBlock(entry))
       } else {
         None
       }
     }
   }
     
-  class Block(fileOffset: Long, size: Long, channel: FileChannel) {
-    def asByteBuffer() =
+  class FileBlock(fileOffset: Long, blockSize: Long, channel: FileChannel) extends Block {
+    override def size = blockSize
+    override def asByteBuffer() =
       channel.map(MapMode.READ_ONLY, fileOffset, size)
   }
 }
