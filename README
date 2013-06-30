@@ -13,76 +13,166 @@ designed to manage large amounts of data for several reasons:
 
 To accomodate large graph data files, Wrapt was defined to fit this niche.
 
+Advantages
+- Easily store complicated structure in a space-efficient manner
+- Allow for mutability by file overlay
+- Allows for external tools for repacking and manipulation, for easy patching
+
 File Format
 ===========
 Types used:
-- uint8_t, uint16_t, uint32_t, uint64
+- uint8_t, uint16_t, uint32_t, uint64. All integers are written in network byte order.
 - wchar_t
-- Ref (8 byte index offset) or Ref<Type> if a particular type is required
+- Ref (4 byte index offset) or Ref<Type> if a particular type is required
 
-Header (16 bytes + n * sizeof(IndexEntry)):
-uint64 magic_number [[ASCII 'WraptDat']]
-uint64 data_offset [[offset to the data section. Also marks the end of the
-  index section]]
-IndexEntry index_entries[] [[See IndexEntry for more info]]
+Limitations
+- Allow 2^31 entries in a file.
+- Entries can be up to 2^48 bytes large
+- String table is max of 2^31 bytes
+- In an overlay file, an average entry takes about 20 bytes + block size (usually takes 8 bytes)
 
-Calculated values:
-Number of index entries: (data_offset - offset(index_entries)) / sizeof(IndexEntry)
+HEADER
+======
 
-Size of index data entry i = (index_entries[i + 1].offset - index_entries[i].offset), or (FILE_LENGTH - index_entries[i].offset
+Format:
+- uint64 magic_number 
+  - Literal sequence of 8 bytes in order (regardless of platform) "WraptDat"
+- uint64 string_table_offset
+  - The file offset of the string table
+- uint64 data_offset 
+  - Offset to the data section.
+- Index index
+  - The file index.
 
-Position of index data entry i = (index_entries[i].offset + data_offset)
+INDEX
+=====
 
-IndexEntry (8 byte structure):
-uint64 offset : 61 [[ The top 61 bits of the data offset region. All data regions are aligned to 8 byte boundaries, so the bottom 3 bits will always be zero ]]
-DataType type : 3 [[ The bottom 3 bits are used for the types of data stored at thedata location ]]
+Since we want to be able to layer files, we create a run length encoded meta index. This means
+that searching for replaced elements is as efficient as a binary search, but for new elements
+with contiguous ranges is just a simple index lookup.
 
-NOTE: Can also have datums be self encoding, to be flexible in the future
-DataType (3 bits):
-000 : Integer
-001 : Floating point
-010 : String
-011 : Boolean
-100 : Map
-101 : Array
-110 : Null // Needs offset, but can be duplicated by following record
-111 : Blob // Uninterpreted data
+Format:
+- uint32 metaindex_size
+  - The number of entries in the metaindex
+- uint32 index_size
+  - The number of entries in the index
+- MetaIndexEntry[metaindex_size] metaindex
+  - Meta index entries, in order of increasing ranges. Ranges may not overlap,
+    although they may have holes in between them. This index may be binary
+    searched in order to find the correct range for an entry.
+- IndexEntry[index_size] index
+  - Index entries. Offsets for data are defined by the meta index.
 
-Integer Data:
-Precision is defined by data size. Integers SHOULD be canonical, using only as many bytes as is necessary. Stored in 2-s compliment
+METAINDEX ENTRY
+===============
 
-Floating Point Data:
-Precision is defined by data size. Acceptable right now is double precision (8 byte) and quad precision (16 byte)
+Format
+------
 
-Boolean Data:
-Always 8 byte. Only valid values are 0 and 1. Other values MUST NOT be used.
+- uint32 range_start
+  - The first index id this range accepts. Thus this accepts
+    [range_start, range_start + range_size)
+- uint32 index_offset
+  - The offset into the index entries where this range begins. This region thus has
+    entry offsets [index_offset, index_offset + range_size)
+- uint32 range_size
+  - The size of this range
 
-String Data:
-Null terminated UTF-8
-// Q: Is null termination enough?
+INDEX ENTRY
+===========
 
-Map Data:
-Ref<String> string_tag # For declaring the type of an object
-Ref<Blob> hash_data
-repeated {
-  Ref<String> key
-  Ref data
-}
+Format
+------
 
-Number of repeats caluclated from the data block size ((data - 16) / 16)
+- uint64 data
+64 63                                      0
+ +-+---------------------------------------+
+ |L| Payload                               |
+ +-+---------------------------------------+
 
-Array Data:
-repeated {
-  Ref data
-}
+if bit L is set, then the payload is interpreted as follows:
 
-Number of repeats calculated from the data block size (data / 8)
+64 63  60                                0
+ +-+---+---------------------------------+
+ |1|Typ| Literal data, or 0              |
+ +-+---+---------------------------------+
 
-Null Data:
-No data. Needs offset, but no size associated.
+Possible values of Type include:
 
-Blob Data:
-Uninterpreted data. Should contain no references to other objects in this file.
+000: Null (0)
+001: Integer (sign extended)
+010: Exponent limited Double-Precision Float (7 bit exponent)
+011: Boolean True (0)
+100: Boolean False (0)
+
+
+Otherwise, it's interpreted as follows:
+
+64 63    48                            3   0
+ +-+------+----------------------------+---+
+ |0| Size | Data Segment Offset        |Typ|
+ +-+------+----------------------------+---+
+
+Note that the offset is not shifted over, but actually masked out of this
+uint64. All data must start at an 8 byte file boundary. This leaves the bottom three
+bits available for type information.
+
+If Size = 0, then the first 8 bytes of the data block are the size of the remaining block.
+Otherwise, it is the number of bytes to be found at the data segment
+
+Possible values of Typ include:
+
+000 : String
+001 : Map
+010 : Array
+011 : Blob
+100 : Long Integer
+101 : Double-Precision Float
+
+STRING TABLE
+============
+
+A string table starts with a uint32 for the table size. The remainder is a
+byte-oriented binary object. Strings are represented by byte offsets into the
+table (storable as uint32). At a given offset, a string is represented by:
+
+- A variable-length unsigned integer (Max 2GB) size
+- size bytes of UTF-8 encoded string data
+
+The string table is sorted in lexographical order, so string tag comparisons can be done by
+simple offset comparison.
+
+===========
+DATA BLOCKS
+===========
+
+Note that all data blocks have a position and a size in the file.
+
+STRING
+======
+
+UTF-8 encoded string data.
+
+MAP
+======
+A map terminates at the block size.
+
+- uint32 type_tag_string_offset
+- MapEntry[] entries
+  - uint32 field_name_string_offset
+  - uint32 index_offset
+
+ARRAY
+=======
+An array terminates at the block size.
+
+- uint32[] index_offsets
+
+BLOB
+=======
+
+- uint32 type_tag_string_offset (?)
+- byte[] data
 
 API Definition:
 ===============
@@ -156,3 +246,4 @@ interface WraptMapBuilder {
 interface WraptArrayBuilder {
   void add(WraptHandle object);
   WraptHandle build();
+}
