@@ -1,126 +1,118 @@
 package org.naerbnic.wrapt.primitive
 
 import org.naerbnic.wrapt.util.LongBits._
+import org.naerbnic.wrapt.Block
+import java.nio.charset.Charset
 
 sealed trait IndexEntry
 
-case class BlockIndexEntry(size: Option[Int], offset: Long, entryType: BlockIndexEntry.Type) extends IndexEntry
+case class BlockIndexEntry(
+    location: BlockSource.Location,
+    entryType: BlockIndexEntry.Type)
+    extends IndexEntry
 
 object BlockIndexEntry {
-  type Type = Type.T
-  object Type extends Enumeration {
-    type T = Value
-    val BLK_STRING, BLK_MAP, BLK_ARRAY, BLK_BLOB, BLK_INT, BLK_FLOAT = Value
+  sealed trait Type {
+    def getValue(block: Block): WraptValue
+  }
+  
+  object Type {
+    object BLK_STRING extends Type {
+      def getValue(block: Block) = {
+        val charbuf = Charset.forName("UTF-8").decode(block.asByteBuffer())
+        StringValue(charbuf.toString())
+      }
+    }
+    
+    object BLK_MAP extends Type {
+      def getValue(block: Block) = MapValue(WraptMap.fromBlock(block))
+    }
+    
+    object BLK_ARRAY extends Type {
+      def getValue(block: Block) = ArrayValue(WraptArray.fromBlock(block))
+    }
+    
+    object BLK_BLOB extends Type {
+      def getValue(block: Block) = BlobValue(block)
+    }
+    
+    object BLK_INT extends Type {
+      def getValue(block: Block) = IntValue(block.readLong(0))
+    }
+    
+    object BLK_FLOAT extends Type {
+      def getValue(block: Block) =
+        FloatValue(java.lang.Double.longBitsToDouble(block.readLong(0)))
+    }
   }
 }
 
-case class LiteralIndexEntry(data: Long, entryType: LiteralIndexEntry.Type) extends IndexEntry {
-  def literalInt =
-    if (entryType == LiteralIndexEntry.Type.LIT_INT) {
-      val base = data.mask(59, 0)
-      if (data.bitRange(60, 59) == 0) {
-        Some(base)
-      } else {
-        // Sign Extend
-        Some((0x1fL << 59) | base)
-      }
-    } else {
-      None
-    }
-  
-  def literalFloat = 
-    if (entryType == LiteralIndexEntry.Type.LIT_FLOAT) {
-      val signBit = data.bitRange(60, 59)
-      val exponent = data.bitRange(59, 52)
-      val mantissa = data.bitRange(52, 0)
-      
-      val newExponent = exponent + (2 << 6) - (2 << 10)
-      
-      val newDoubleBits =
-        (signBit << 63) | (exponent << 52) | mantissa
-        
-      Some(java.lang.Double.longBitsToDouble(newDoubleBits))
-    } else {
-      None
-    }
-  
-  def literalBool =
-    if (entryType == IndexEntry.Type.BOOL) {
-      Some(data.mask(1, 0) != 0) 
-    } else {
-      None
-    }
-  
-  def isLiteralNull = entryType == IndexEntry.Type.NULL
-}
+case class LiteralIndexEntry(data: Long, entryType: LiteralIndexEntry.Type)
+    extends IndexEntry
 
 object LiteralIndexEntry {
-  type Type = Type.T
-  object Type extends Enumeration {
-    type T = Value
-    val LIT_NULL, LIT_INT, LIT_FLOAT, LIT_BOOL = Value
+  sealed trait Type {
+    def getValue(data: Long): WraptValue
+  }
+  
+  object Type {
+    object LIT_NULL extends Type {
+      def getValue(data: Long) = {
+        require (data == 0)
+        NullValue
+      }
+    }
+    
+    object LIT_INT extends Type {
+      def getValue(data: Long) = {
+        val base = data.mask(59, 0)
+        val result = if (data.bitRange(60, 59) == 0) {
+          base
+        } else {
+          // Sign Extend
+          (0x1fL << 59) | base
+        }
+        
+        IntValue(result)
+      }
+    }
+    
+    object LIT_FLOAT extends Type {
+      def getValue(data: Long) = {
+        val signBit = data.bitRange(60, 59)
+        val exponent = data.bitRange(59, 52)
+        val mantissa = data.bitRange(52, 0)
+        
+        val newExponent = exponent + (2 << 6) - (2 << 10)
+        
+        val newDoubleBits =
+          (signBit << 63) | (exponent << 52) | mantissa
+          
+        FloatValue(java.lang.Double.longBitsToDouble(newDoubleBits))
+      }
+    }
+    
+    object LIT_BOOL extends Type {
+      def getValue(data: Long) = {
+        require (data.mask(60, 1) == 0)
+        BoolValue(data.mask(1, 0) != 0)
+      }
+    }
   }
 }
 
-/*
-class IndexEntry(val entry: Long) extends AnyVal {
-  private def mask(high: Int, low: Int) =
-    entry & ((1 << (high - low) - 1) << low)
-  private def bitRange(high: Int, low: Int) = 
-    mask(high, low) >>> low
-    
-  private def isLiteral = bitRange(64, 63) != 0
-  private def literalTypeCode = bitRange(63, 60)
-  private def blockTypeCode = bitRange(3, 0)
-  
-  def entryType = 
-    if (isLiteral) {
-      literalTypeCode match {
-        case 0 => Some(IndexEntry.Type.NULL)
-        case 1 => Some(IndexEntry.Type.INT)
-        case 2 => Some(IndexEntry.Type.FLOAT)
-        case 3 => Some(IndexEntry.Type.BOOL)
-        case _ => None
-      }
-    } else {
-      blockTypeCode match {
-        case 0 => Some(IndexEntry.Type.STRING)
-        case 1 => Some(IndexEntry.Type.MAP)
-        case 2 => Some(IndexEntry.Type.ARRAY)
-        case 3 => Some(IndexEntry.Type.BLOB)
-        case 4 => Some(IndexEntry.Type.INT)
-        case 5 => Some(IndexEntry.Type.FLOAT)
-      }
-    }
-    
-  def asLiteralEntry = {
-    val entryType = this.entryType
-    if (isLiteral && entryType.nonEmpty) {
-      Some(LiteralIndexEntry(mask(60, 0), entryType.get))
-    } else {
-      None
-    }
-  }
-    
-  def asBlockEntry = {
-    val entryType = this.entryType
-    if (!isLiteral && entryType.nonEmpty) {
-      val baseSize = bitRange(63, 48).toInt
-      val blockSize = if (baseSize == 0) None else Some(baseSize)
-      Some(BlockIndexEntry(blockSize, mask(48, 3), entryType.get))
-    } else {
-      None
-    }
-  }
-}
-*/
 object IndexEntry {
   val Size = 8
   
   def apply(entry: Long) = {
     if (entry.bitRange(64, 63) != 0) {
       val lit_size = entry.bitRange(63, 48).toInt
-      val size = if (lit_size == 0) None else Some(lit_size)
+      val offset = entry.mask(48, 3)
+      val loc = if (lit_size == 0)
+        BlockSource.ImplicitLocation(offset)
+      else
+        BlockSource.ExplicitLocation(offset, lit_size)
+        
       val optType = entry.bitRange(3, 0) match {
         case 0 => Some(BlockIndexEntry.Type.BLK_STRING)
         case 1 => Some(BlockIndexEntry.Type.BLK_MAP)
@@ -131,9 +123,19 @@ object IndexEntry {
         case _ => None
       }
       
-      for (t <- optType) yield BlockIndexEntry(size, entry.mask(48, 3), t)
+      for (t <- optType) yield BlockIndexEntry(loc, t)
     } else {
+      val data = entry.mask(60, 0)
+        
+      val optType = entry.bitRange(63, 60) match {
+        case 0 => Some(LiteralIndexEntry.Type.LIT_NULL)
+        case 1 => Some(LiteralIndexEntry.Type.LIT_INT)
+        case 2 => Some(LiteralIndexEntry.Type.LIT_FLOAT)
+        case 3 => Some(LiteralIndexEntry.Type.LIT_BOOL)
+        case _ => None
+      }
       
+      for (t <- optType) yield LiteralIndexEntry(data, t)
     }
   }
 }

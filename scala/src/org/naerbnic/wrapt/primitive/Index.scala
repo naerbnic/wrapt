@@ -1,13 +1,12 @@
-package org.naerbnic.wrapt
+package org.naerbnic.wrapt.primitive
 
 import java.nio.channels.FileChannel
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel.MapMode
-import org.naerbnic.wrapt.primitive.MetaIndexEntry
-import org.naerbnic.wrapt.primitive.IndexEntry
+import org.naerbnic.wrapt.Block
 
 class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
-  lazy val numMetaIndexEntry = metaIndexBuffer.size / 24
+  lazy val numMetaIndexEntry = metaIndexBuffer.size.toInt / 24
   
   private def metaIndexEntryBuffer(offset: Int) = {
     metaIndexBuffer.getSubBlock(offset, MetaIndexEntry.Size)
@@ -17,7 +16,7 @@ class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
     MetaIndexEntry.fromBuffer(metaIndexEntryBuffer(offset))
   
   private def indexEntryLong(offset: Int) =
-    indexBuffer.getLong(offset * IndexEntry.Size)
+    indexBuffer.readLong(offset * IndexEntry.Size)
     
   private def findPhysicalOffsetFromVirtual(virtualOffset: Int): Option[Int] = {
     def search(least: Int, most: Int): Option[Int] = {
@@ -37,7 +36,8 @@ class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
   def indexEntry(virtualOffset: Int) = {
     for {
       physicalOffset <- findPhysicalOffsetFromVirtual(virtualOffset)
-    } yield IndexEntry(indexEntryLong(physicalOffset))
+      entry <- IndexEntry(indexEntryLong(physicalOffset))
+    } yield entry
   }
 }
 

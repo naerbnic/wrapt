@@ -95,7 +95,7 @@ object Block {
   def fromFile(channel: FileChannel): Block = new FileBlock(channel)
   
   private class SubBlock(subblock: Block, offset: Long, val size: Long) extends Block {
-    override def getByteBuffer(offset: Long, size: Int) {
+    override def getByteBuffer(offset: Long, size: Int) = {
       require (size >= 0)
       require (offset >= 0)
       require (offset + size <= this.size)
@@ -120,7 +120,7 @@ object Block {
   
   private class ByteBufferBlock(buffer: ByteBuffer) extends Block {
     override def size = buffer.capacity()
-    override def getByteBuffer(offset: Long, size: Int) {
+    override def getByteBuffer(offset: Long, size: Int) = {
       require (offset >= 0)
       require (size >= 0)
       require (offset + size <= buffer.capacity())

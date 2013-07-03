@@ -5,96 +5,40 @@ import java.nio.ByteBuffer
 import org.naerbnic.wrapt.Block
 
 class PrimitiveWraptFile private (
-    header: Header, block: Block) {
-  val dataSegment = block.getSubBlock(header.dataOffset)
-  lazy val stringTable =
-    StringTable.fromFile(block, header.stringTableOffset)
-  lazy val index = Index.fromFile(block, Header.Size)
-
-  private def getBlockWithSize(dataOffset: Long, size: Int) = 
-    dataSegment.getSubBlock(dataOffset, size)
-  
-  private def getBlockWithInlineSize(dataOffset: Long) = {
-    val size = block.readLong(dataOffset)
-    dataSegment.getSubBlock(dataOffset + 8, size)
+    header: Header,
+    stringTable: StringTable,
+    index: Index,
+    blockSource: BlockSource) extends ValueSource {
+  def getValue(indexOffset: Int) = {
+    for (entry <- index.indexEntry(indexOffset))
+    yield entry match {
+      case BlockIndexEntry(loc, t) => t.getValue(blockSource.getBlock(loc))
+      case LiteralIndexEntry(data, t) => t.getValue(data)
+    }
   }
-  
-  private def getBlock(entry: BlockIndexEntry) = {
-    entry.size.fold {
-      getBlockWithInlineSize(entry.offset)
-    } { size =>
-      getBlockWithSize(entry.offset, size)
-    } 
-  }
-  
-  def getHandle(virtualIndex: Int) = 
-    for {
-      entry <- index.indexEntry(virtualIndex)
-    } yield new PrimitiveWraptFile.Handle(entry, this)
 }
 
 object PrimitiveWraptFile {
-  def fromFile(block: Block) =
-    for { header <- Header.fromBlock(block) }
-    yield new PrimitiveWraptFile(header, channel)
-    
-  class Handle(entry: IndexEntry, wraptFile: PrimitiveWraptFile) {
-    def asInt = {
-      if (entry.entryType == IndexEntry.Type.INT) {
-        entry.literalInt.getOrElse {
-          val buffer = wraptFile.getBlock(entry).asByteBuffer()
-          require (buffer.capacity() == 8)
-          Some(buffer.asLongBuffer().get(0))
+  private class WraptFileBlockSource(dataSegment: Block) extends BlockSource {
+    def getBlock(entry: BlockSource.Location) =
+      entry match {
+        case BlockSource.ExplicitLocation(offset, size) => 
+          dataSegment.getSubBlock(offset, size)
+          
+        case BlockSource.ImplicitLocation(offset) => {
+          val size = dataSegment.readLong(offset)
+          dataSegment.getSubBlock(offset + 8, size)
         }
-      } else {
-        None
       }
-    }
-    
-    def asFloat = {
-      if (entry.entryType == IndexEntry.Type.FLOAT) {
-        entry.literalFloat.getOrElse {
-          val buffer = wraptFile.getBlock(entry).asByteBuffer()
-          require (buffer.capacity() == 8)
-          Some(buffer.asDoubleBuffer().get(0))
-        }
-      } else {
-        None
-      }
-    }
-    
-    def asBool = {
-      if (entry.entryType == IndexEntry.Type.BOOL) {
-        Some(entry.literalBool.get)
-      } else {
-        None
-      }
-    }
-    
-    def isNull = entry.entryType == IndexEntry.Type.NULL
-    
-    def asArray = {
-      if (entry.entryType == IndexEntry.Type.ARRAY) {
-        Some(new PrimitiveArray(wraptFile.getBlock(entry)))
-      } else {
-        None
-      }
-    }
-    
-    def asMap = {
-      if (entry.entryType == IndexEntry.Type.MAP) {
-        Some(new PrimitiveMap(wraptFile.getBlock(entry), wraptFile.stringTable))
-      } else {
-        None
-      }
-    }
-    
-    def asBlob = {
-      if (entry.entryType == IndexEntry.Type.BLOB) {
-        Some(wraptFile.getBlock(entry))
-      } else {
-        None
-      }
-    }
+  }
+  
+  def fromFile(block: Block) = {
+    for {
+      header <- Header.fromBlock(block)
+      val stringTable = StringTable.fromFile(block, header.stringTableOffset)
+      val index = Index.fromFile(block, Header.Size)
+      val dataSegment = block.getSubBlock(header.dataOffset)
+    } yield new PrimitiveWraptFile(header, stringTable, index, 
+        new WraptFileBlockSource(dataSegment))
   }
 }
