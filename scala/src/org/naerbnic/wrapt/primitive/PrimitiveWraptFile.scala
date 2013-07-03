@@ -3,28 +3,20 @@ package org.naerbnic.wrapt.primitive
 import java.nio.channels.FileChannel
 import java.nio.ByteBuffer
 import org.naerbnic.wrapt.Block
-import org.naerbnic.wrapt.primitive.BlockIndexEntry
-import org.naerbnic.wrapt.primitive.ByteBufferStringTable
-import org.naerbnic.wrapt.primitive.Header
-import org.naerbnic.wrapt.primitive.Index
-import org.naerbprimitive.nic.wrapt.IndexEntry
-import org.naerbnic.wrapt.PrimitiveArray
-import org.naerbnic.wrapt.PrimitiveMap
 
 class PrimitiveWraptFile private (
-    header: Header, channel: FileChannel) {
+    header: Header, block: Block) {
+  val dataSegment = block.getSubBlock(header.dataOffset)
   lazy val stringTable =
-    ByteBufferStringTable.fromFile(channel, header.stringTableOffset)
-  lazy val index = Index.fromFile(channel, Header.Size)
-  
+    StringTable.fromFile(block, header.stringTableOffset)
+  lazy val index = Index.fromFile(block, Header.Size)
+
   private def getBlockWithSize(dataOffset: Long, size: Int) = 
-    Block.fromFile(channel, dataOffset + header.dataOffset, size)
+    dataSegment.getSubBlock(dataOffset, size)
   
   private def getBlockWithInlineSize(dataOffset: Long) = {
-    val sizeBuffer = ByteBuffer.allocate(8)
-    channel.read(sizeBuffer, dataOffset + header.dataOffset)
-    val size = sizeBuffer.asLongBuffer().get(0)
-    Block.fromFile(channel, dataOffset + header.dataOffset + 8, size)
+    val size = block.readLong(dataOffset)
+    dataSegment.getSubBlock(dataOffset + 8, size)
   }
   
   private def getBlock(entry: BlockIndexEntry) = {
@@ -42,8 +34,8 @@ class PrimitiveWraptFile private (
 }
 
 object PrimitiveWraptFile {
-  def fromFile(channel: FileChannel) =
-    for { header <- Header.fromFile(channel) }
+  def fromFile(block: Block) =
+    for { header <- Header.fromBlock(block) }
     yield new PrimitiveWraptFile(header, channel)
     
   class Handle(entry: IndexEntry, wraptFile: PrimitiveWraptFile) {

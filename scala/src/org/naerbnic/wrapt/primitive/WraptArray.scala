@@ -1,5 +1,5 @@
 package org.naerbnic.wrapt.primitive
 
-trait WraptArray {
-
+class WraptArray {
+  
 }

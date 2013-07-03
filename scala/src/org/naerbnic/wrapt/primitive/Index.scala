@@ -6,13 +6,11 @@ import java.nio.channels.FileChannel.MapMode
 import org.naerbnic.wrapt.primitive.MetaIndexEntry
 import org.naerbnic.wrapt.primitive.IndexEntry
 
-class Index private (metaIndexBuffer: ByteBuffer, indexBuffer: ByteBuffer) {
-  lazy val numMetaIndexEntry = metaIndexBuffer.capacity() / 24
+class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
+  lazy val numMetaIndexEntry = metaIndexBuffer.size / 24
   
   private def metaIndexEntryBuffer(offset: Int) = {
-    metaIndexBuffer.position(offset)
-    metaIndexBuffer.limit(offset + MetaIndexEntry.Size)
-    metaIndexBuffer.slice()
+    metaIndexBuffer.getSubBlock(offset, MetaIndexEntry.Size)
   }
   
   private def metaIndexEntry(offset: Int) =
@@ -44,9 +42,9 @@ class Index private (metaIndexBuffer: ByteBuffer, indexBuffer: ByteBuffer) {
 }
 
 object Index {
-  def fromFile(channel: FileChannel, offset: Long) = {
+  def fromFile(file: Block, offset: Long) = {
     val indexHeaderBuffer = ByteBuffer.allocate(8)
-    channel.read(indexHeaderBuffer, offset)
+    file.read(indexHeaderBuffer, offset)
     val indexHeaderIntBuffer = indexHeaderBuffer.asIntBuffer()
     
     val numMetaIndexEntries = indexHeaderIntBuffer.get(0)
@@ -56,13 +54,12 @@ object Index {
     val metaIndexOffset = offset + indexHeaderBuffer.capacity()
     
     val metaIndexBuffer =
-        channel.map(MapMode.READ_ONLY, metaIndexOffset, metaIndexSize)
+        file.getSubBlock(metaIndexOffset, metaIndexSize).reify()
         
     val indexSize = numIndexEntries * IndexEntry.Size
     val indexOffset = metaIndexOffset + metaIndexSize
     
-    val indexBuffer =
-        channel.map(MapMode.READ_ONLY, indexOffset, indexSize)
+    val indexBuffer = file.getSubBlock(indexOffset, indexSize)
         
     new Index(metaIndexBuffer, indexBuffer)
   }

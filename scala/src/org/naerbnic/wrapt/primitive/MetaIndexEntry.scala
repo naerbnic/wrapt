@@ -1,6 +1,7 @@
 package org.naerbnic.wrapt.primitive
 
 import java.nio.ByteBuffer
+import org.naerbnic.wrapt.Block
 
 case class MetaIndexEntry(virtualStart: Int, physicalStart: Int, size: Int) {
   def virtualEnd = virtualStart + size
@@ -19,8 +20,8 @@ case class MetaIndexEntry(virtualStart: Int, physicalStart: Int, size: Int) {
 object MetaIndexEntry {
   val Size = 12
   
-  def fromBuffer(buffer: ByteBuffer) = {
-    val intBuffer = buffer.asIntBuffer()
+  def fromBuffer(block: Block) = {
+    val intBuffer = block.asByteBuffer().asIntBuffer()
     val virtualStart = intBuffer.get()
     val physicalStart = intBuffer.get()
     val size = intBuffer.get()
