@@ -1,4 +1,4 @@
-package org.naerbnic.wrapt
+package org.naerbnic.wrapt.primitive
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel

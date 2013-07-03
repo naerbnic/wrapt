@@ -1,9 +1,15 @@
-package org.naerbnic.wrapt
+package org.naerbnic.wrapt.primitive
 
 import java.nio.channels.FileChannel
 import java.nio.ByteBuffer
-import java.nio.LongBuffer
-import java.nio.channels.FileChannel.MapMode
+import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.primitive.BlockIndexEntry
+import org.naerbnic.wrapt.primitive.ByteBufferStringTable
+import org.naerbnic.wrapt.primitive.Header
+import org.naerbnic.wrapt.primitive.Index
+import org.naerbprimitive.nic.wrapt.IndexEntry
+import org.naerbnic.wrapt.PrimitiveArray
+import org.naerbnic.wrapt.PrimitiveMap
 
 class PrimitiveWraptFile private (
     header: Header, channel: FileChannel) {
@@ -21,13 +27,12 @@ class PrimitiveWraptFile private (
     Block.fromFile(channel, dataOffset + header.dataOffset + 8, size)
   }
   
-  private def getBlock(entry: IndexEntry) = {
-    val size = entry.blockSize.get
-    if (size == 0) {
-      getBlockWithInlineSize(entry.offset.get)
-    } else {
-      getBlockWithSize(entry.offset.get, size)
-    }
+  private def getBlock(entry: BlockIndexEntry) = {
+    entry.size.fold {
+      getBlockWithInlineSize(entry.offset)
+    } { size =>
+      getBlockWithSize(entry.offset, size)
+    } 
   }
   
   def getHandle(virtualIndex: Int) = 
