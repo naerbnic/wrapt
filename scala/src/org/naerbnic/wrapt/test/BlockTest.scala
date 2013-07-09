@@ -12,7 +12,7 @@ class BlockSpec extends FunSpec with BeforeAndAfter {
   }
   
   describe ("A Block") {
-    it ("be convertable to a byte buffer") {
+    it ("convert to a byte buffer") {
       assert(helloWorld.size == 14)
       val firstBlock = helloWorld.getSubBlock(0, 6)
       

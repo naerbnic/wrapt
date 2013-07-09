@@ -3,6 +3,12 @@ package org.naerbnic.wrapt.primitive
 import org.naerbnic.wrapt.util.LongBits._
 import org.naerbnic.wrapt.Block
 import java.nio.charset.Charset
+import org.naerbnic.wrapt.StringValue
+import org.naerbnic.wrapt.BlobValue
+import org.naerbnic.wrapt.IntValue
+import org.naerbnic.wrapt.FloatValue
+import org.naerbnic.wrapt.NullValue
+import org.naerbnic.wrapt.BoolValue
 
 sealed trait IndexEntry
 
@@ -20,7 +26,7 @@ object BlockIndexEntry {
     object BLK_STRING extends Type {
       def getValue(block: Block) = {
         val charbuf = Charset.forName("UTF-8").decode(block.asByteBuffer())
-        StringValue(charbuf.toString())
+        BasicWraptValue(StringValue(charbuf.toString()))
       }
     }
     
@@ -33,16 +39,17 @@ object BlockIndexEntry {
     }
     
     object BLK_BLOB extends Type {
-      def getValue(block: Block) = BlobValue(block)
+      def getValue(block: Block) = BasicWraptValue(BlobValue(block))
     }
     
     object BLK_INT extends Type {
-      def getValue(block: Block) = IntValue(block.readLong(0))
+      def getValue(block: Block) = BasicWraptValue(IntValue(block.readLong(0)))
     }
     
     object BLK_FLOAT extends Type {
       def getValue(block: Block) =
-        FloatValue(java.lang.Double.longBitsToDouble(block.readLong(0)))
+        BasicWraptValue(
+            FloatValue(java.lang.Double.longBitsToDouble(block.readLong(0))))
     }
   }
 }
@@ -59,7 +66,7 @@ object LiteralIndexEntry {
     object LIT_NULL extends Type {
       def getValue(data: Long) = {
         require (data == 0)
-        NullValue
+        BasicWraptValue(NullValue)
       }
     }
     
@@ -73,7 +80,7 @@ object LiteralIndexEntry {
           (0x1fL << 59) | base
         }
         
-        IntValue(result)
+        BasicWraptValue(IntValue(result))
       }
     }
     
@@ -88,14 +95,15 @@ object LiteralIndexEntry {
         val newDoubleBits =
           (signBit << 63) | (exponent << 52) | mantissa
           
-        FloatValue(java.lang.Double.longBitsToDouble(newDoubleBits))
+        BasicWraptValue(
+            FloatValue(java.lang.Double.longBitsToDouble(newDoubleBits)))
       }
     }
     
     object LIT_BOOL extends Type {
       def getValue(data: Long) = {
         require (data.mask(60, 1) == 0)
-        BoolValue(data.mask(1, 0) != 0)
+        BasicWraptValue(BoolValue(data.mask(1, 0) != 0))
       }
     }
   }
