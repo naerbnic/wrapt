@@ -1,5 +1,7 @@
 package org.naerbnic.wrapt
 
+import org.naerbnic.wrapt.util.Block
+
 sealed trait BasicValue extends Any
 
 object NullValue extends BasicValue

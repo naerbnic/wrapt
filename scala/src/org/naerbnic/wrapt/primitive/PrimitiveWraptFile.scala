@@ -2,7 +2,7 @@ package org.naerbnic.wrapt.primitive
 
 import java.nio.channels.FileChannel
 import java.nio.ByteBuffer
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 
 class PrimitiveWraptFile private (
     header: Header,

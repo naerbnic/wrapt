@@ -1,6 +1,6 @@
 package org.naerbnic.wrapt.primitive
 
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 
 trait BlockSource {
   def getBlock(entry: BlockSource.Location): Block

@@ -1,6 +1,6 @@
-package org.naerbnic.wrapt.serialize
+package org.naerbnic.wrapt.util.serializer
 
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 import java.nio.ByteBuffer
 
 trait BlockGenerator {

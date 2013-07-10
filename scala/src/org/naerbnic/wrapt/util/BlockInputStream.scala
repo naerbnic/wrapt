@@ -1,4 +1,4 @@
-package org.naerbnic.wrapt
+package org.naerbnic.wrapt.util
 
 import java.io.InputStream
 import java.nio.ByteBuffer

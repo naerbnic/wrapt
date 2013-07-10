@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.channels.FileChannel
 import java.nio.channels.FileChannel.MapMode
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 
 class StringTable private (block: Block) {
   def getString(index: Int) = {

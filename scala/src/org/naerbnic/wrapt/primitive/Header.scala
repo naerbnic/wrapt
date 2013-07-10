@@ -2,7 +2,7 @@ package org.naerbnic.wrapt.primitive
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 
 case class Header (stringTableOffset: Long, dataOffset: Long)
 

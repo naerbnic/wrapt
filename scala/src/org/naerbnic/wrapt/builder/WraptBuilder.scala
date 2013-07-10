@@ -1,6 +1,6 @@
 package org.naerbnic.wrapt.builder
 
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 import org.naerbnic.wrapt.BasicValue
 import org.naerbnic.wrapt.BasicValue
 

@@ -1,4 +1,4 @@
-package org.naerbnic.wrapt.serialize
+package org.naerbnic.wrapt.util.serializer
 
 sealed trait FileEntity
 

@@ -1,6 +1,6 @@
 package org.naerbnic.wrapt.primitive
 
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 
 class WraptArray {
   

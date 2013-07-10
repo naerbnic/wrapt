@@ -1,7 +1,7 @@
 package org.naerbnic.wrapt.test
 
 import org.scalatest._
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 import java.nio.charset.Charset
 
 class BlockSpec extends FunSpec with BeforeAndAfter {

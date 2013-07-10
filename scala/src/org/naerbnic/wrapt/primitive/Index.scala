@@ -3,7 +3,7 @@ package org.naerbnic.wrapt.primitive
 import java.nio.channels.FileChannel
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel.MapMode
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 
 class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
   lazy val numMetaIndexEntry = metaIndexBuffer.size.toInt / 24

@@ -1,7 +1,8 @@
-package org.naerbnic.wrapt.serialize
+package org.naerbnic.wrapt.util.serializer
 
 import org.naerbnic.wrapt.util.Composite
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
+import scala.Option.option2Iterable
 
 object Serializer {
   private def findMarkOffsets(entitySeq: Seq[FileEntity]) = {

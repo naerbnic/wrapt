@@ -1,7 +1,7 @@
 package org.naerbnic.wrapt.primitive
 
 import org.naerbnic.wrapt.util.LongBits._
-import org.naerbnic.wrapt.Block
+import org.naerbnic.wrapt.util.Block
 import java.nio.charset.Charset
 import org.naerbnic.wrapt.StringValue
 import org.naerbnic.wrapt.BlobValue
