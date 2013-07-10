@@ -3,6 +3,7 @@ package org.naerbnic.wrapt
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.channels.FileChannel.MapMode
+import scala.collection.immutable.TreeMap
 
 trait Block {
   /**
@@ -12,7 +13,7 @@ trait Block {
   
   /**
    * Returns a byte buffer into this block. It may be a direct buffer, or a
-   * copy depending on this size of the buffer, and the underlying type.
+   * copy depending on this size of the buffer and the underlying type.
    */
   def getByteBuffer(offset: Long, size: Int): ByteBuffer
   
@@ -148,4 +149,83 @@ object Block {
   
   def fromArray(array: Array[Byte]): Block =
     new Block.ByteBufferBlock(ByteBuffer.wrap(array))
+  
+  object NullBlock extends Block {
+    override def size = 0
+    override def getByteBuffer(offset: Long, size: Int) = {
+      require (offset == 0)
+      require (size == 0)
+      ByteBuffer.allocate(0)
+    }
+    
+    override def read(dst: ByteBuffer, offset: Long) = {
+      require (offset == 0)
+      require (dst.remaining() == 0)
+    }
+    
+    override def getSubBlock(offset: Long, size: Long) = {
+      require (offset == 0)
+      require (size == 0)
+      
+      this
+    }
+    
+    override def reify() = this
+  }
+  
+  private class ConcatBlock(blocks: Seq[Block]) extends Block {
+    override val size =
+      blocks.foldLeft(0L) {(currSize, block) => currSize + block.size}
+    
+    private val offsetMap = {
+      val builder = TreeMap.newBuilder[Long, Block]
+      var currOffset = 0L
+      
+      for (block <- blocks) {
+        builder += (currOffset -> block)
+        currOffset += block.size
+      }
+      
+      builder.result()
+    }
+    
+    override def read(dst: ByteBuffer, offset: Long) = {
+      require (offset >= 0)
+      require (offset + dst.remaining() <= size)
+      
+      val firstBlockOffset = offsetMap.to(offset).last._1
+      val mapRange = offsetMap.range(firstBlockOffset, offset + dst.remaining())
+      
+      var currFileOffset = offset
+      for ((blockOffset, block) <- mapRange) {
+        // Read in as much of this block as possible
+        val savedLimit = dst.limit()
+        
+        // Location within the block to start reading
+        val startingOffset = currFileOffset - blockOffset
+        
+        // Potential limit on the dst needed to read the rest of the block
+        // starting from startingOffset
+        val blockEndLimit = dst.position() + block.size - startingOffset
+        
+        // Only modify the limit if it's strictly less than the amount
+        // desired by the caller
+        if (savedLimit > blockEndLimit) {
+          dst.limit(blockEndLimit.toInt)
+        }
+        block.read(dst, startingOffset)
+        dst.limit(savedLimit)
+        currFileOffset = block.size + blockOffset
+      }
+    }
+    
+    override def getByteBuffer(offset: Long, size: Int) = {
+      val buffer = ByteBuffer.allocate(size)
+      read(buffer, offset)
+      buffer.clear()
+      buffer
+    }
+  }
+  
+  def concat(blocks: Block*): Block = new ConcatBlock(blocks)
 }
