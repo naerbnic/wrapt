@@ -1,9 +1,5 @@
-package org.naerbnic.wrapt.primitive
-
-import java.nio.ByteBuffer
+package org.naerbnic.wrapt.primitive.impl
 import java.nio.charset.Charset
-import java.nio.channels.FileChannel
-import java.nio.channels.FileChannel.MapMode
 import org.naerbnic.wrapt.util.Block
 
 class StringTable private (block: Block) {

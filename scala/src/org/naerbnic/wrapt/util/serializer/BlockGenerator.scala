@@ -2,16 +2,17 @@ package org.naerbnic.wrapt.util.serializer
 
 import org.naerbnic.wrapt.util.Block
 import java.nio.ByteBuffer
+import BlockGenerator.MarkAtlas
 
 trait BlockGenerator {
   def size: Long
-  def createBlock(atlas: BlockGenerator.MarkAtlas): Block
+  def createBlock(atlas: MarkAtlas): Block
 }
 
 object BlockGenerator {
   type MarkAtlas = Mark => Long
   
-  def fromLong(f: MarkAtlas => Long) = new BlockGenerator() {
+  def fromLongFunc(f: MarkAtlas => Long) = new BlockGenerator() {
     override def size = 8
     def createBlock(atlas: MarkAtlas) = {
       val buffer = ByteBuffer.allocate(8)
@@ -20,12 +21,16 @@ object BlockGenerator {
     }
   }
   
-  def fromInt(f: MarkAtlas => Int) = new BlockGenerator() {
-    override def size = 8
+  def fromLong(v: Long) = fromLongFunc(_ => v)
+  
+  def fromIntFunc(f: MarkAtlas => Int) = new BlockGenerator() {
+    override def size = 4
     def createBlock(atlas: MarkAtlas) = {
       val buffer = ByteBuffer.allocate(4)
       buffer.asLongBuffer().put(0, f(atlas))
       Block.fromBuffer(buffer)
     }
   }
+  
+  def fromInt(v: Int) = fromIntFunc(_ => v)
 }

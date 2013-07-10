@@ -1,9 +1,8 @@
-package org.naerbnic.wrapt.primitive
-
-import java.nio.channels.FileChannel
+package org.naerbnic.wrapt.primitive.impl
 import java.nio.ByteBuffer
-import java.nio.channels.FileChannel.MapMode
 import org.naerbnic.wrapt.util.Block
+import org.naerbnic.wrapt.primitive.PrimValue
+import scala.collection.immutable.SortedSet
 
 class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
   lazy val numMetaIndexEntry = metaIndexBuffer.size.toInt / 24
@@ -33,12 +32,14 @@ class Index private (metaIndexBuffer: Block, indexBuffer: Block) {
     search(0, numMetaIndexEntry)
   }
   
-  def indexEntry(virtualOffset: Int) = {
+  def indexEntry(virtualOffset: Int): Option[IndexEntry] = {
     for {
       physicalOffset <- findPhysicalOffsetFromVirtual(virtualOffset)
       entry <- IndexEntry(indexEntryLong(physicalOffset))
     } yield entry
   }
+  
+  def entryIndexes = SortedSet[Int]()
 }
 
 object Index {

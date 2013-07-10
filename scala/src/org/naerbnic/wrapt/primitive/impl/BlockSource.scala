@@ -1,4 +1,4 @@
-package org.naerbnic.wrapt.primitive
+package org.naerbnic.wrapt.primitive.impl
 
 import org.naerbnic.wrapt.util.Block
 

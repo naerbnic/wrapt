@@ -1,14 +1,15 @@
-package org.naerbnic.wrapt.primitive
+package org.naerbnic.wrapt.primitive.impl
 
 import org.naerbnic.wrapt.util.LongBits._
 import org.naerbnic.wrapt.util.Block
 import java.nio.charset.Charset
-import org.naerbnic.wrapt.StringValue
-import org.naerbnic.wrapt.BlobValue
-import org.naerbnic.wrapt.IntValue
-import org.naerbnic.wrapt.FloatValue
-import org.naerbnic.wrapt.NullValue
-import org.naerbnic.wrapt.BoolValue
+import org.naerbnic.wrapt.{
+  StringValue, BlobValue, IntValue, FloatValue, NullValue, BoolValue
+}
+
+import org.naerbnic.wrapt.primitive.{
+  PrimValue, PrimBasicValue, PrimArrayValue, PrimMapValue
+}
 
 sealed trait IndexEntry
 
@@ -19,36 +20,36 @@ case class BlockIndexEntry(
 
 object BlockIndexEntry {
   sealed trait Type {
-    def getValue(block: Block): WraptValue
+    def getValue(block: Block): PrimValue
   }
   
   object Type {
     object BLK_STRING extends Type {
       def getValue(block: Block) = {
         val charbuf = Charset.forName("UTF-8").decode(block.asByteBuffer())
-        BasicWraptValue(StringValue(charbuf.toString()))
+        PrimBasicValue(StringValue(charbuf.toString()))
       }
     }
     
     object BLK_MAP extends Type {
-      def getValue(block: Block) = MapValue(WraptMap.fromBlock(block))
+      def getValue(block: Block) = PrimMapValue(null)
     }
     
     object BLK_ARRAY extends Type {
-      def getValue(block: Block) = ArrayValue(WraptArray.fromBlock(block))
+      def getValue(block: Block) = PrimArrayValue(null)
     }
     
     object BLK_BLOB extends Type {
-      def getValue(block: Block) = BasicWraptValue(BlobValue(block))
+      def getValue(block: Block) = PrimBasicValue(BlobValue(block))
     }
     
     object BLK_INT extends Type {
-      def getValue(block: Block) = BasicWraptValue(IntValue(block.readLong(0)))
+      def getValue(block: Block) = PrimBasicValue(IntValue(block.readLong(0)))
     }
     
     object BLK_FLOAT extends Type {
       def getValue(block: Block) =
-        BasicWraptValue(
+        PrimBasicValue(
             FloatValue(java.lang.Double.longBitsToDouble(block.readLong(0))))
     }
   }
@@ -59,14 +60,14 @@ case class LiteralIndexEntry(data: Long, entryType: LiteralIndexEntry.Type)
 
 object LiteralIndexEntry {
   sealed trait Type {
-    def getValue(data: Long): WraptValue
+    def getValue(data: Long): PrimValue
   }
   
   object Type {
     object LIT_NULL extends Type {
       def getValue(data: Long) = {
         require (data == 0)
-        BasicWraptValue(NullValue)
+        PrimBasicValue(NullValue)
       }
     }
     
@@ -80,7 +81,7 @@ object LiteralIndexEntry {
           (0x1fL << 59) | base
         }
         
-        BasicWraptValue(IntValue(result))
+        PrimBasicValue(IntValue(result))
       }
     }
     
@@ -95,7 +96,7 @@ object LiteralIndexEntry {
         val newDoubleBits =
           (signBit << 63) | (exponent << 52) | mantissa
           
-        BasicWraptValue(
+        PrimBasicValue(
             FloatValue(java.lang.Double.longBitsToDouble(newDoubleBits)))
       }
     }
@@ -103,7 +104,7 @@ object LiteralIndexEntry {
     object LIT_BOOL extends Type {
       def getValue(data: Long) = {
         require (data.mask(60, 1) == 0)
-        BasicWraptValue(BoolValue(data.mask(1, 0) != 0))
+        PrimBasicValue(BoolValue(data.mask(1, 0) != 0))
       }
     }
   }

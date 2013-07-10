@@ -1,14 +1,14 @@
-package org.naerbnic.wrapt.primitive
+package org.naerbnic.wrapt.primitive.impl
 
-import java.nio.channels.FileChannel
-import java.nio.ByteBuffer
 import org.naerbnic.wrapt.util.Block
+import org.naerbnic.wrapt.primitive.PrimFile
 
-class PrimitiveWraptFile private (
+class PrimFileImpl private (
     header: Header,
     stringTable: StringTable,
     index: Index,
-    blockSource: BlockSource) extends ValueSource {
+    blockSource: BlockSource) extends PrimFile {
+  def indexes = index.entryIndexes
   def getValue(indexOffset: Int) = {
     for (entry <- index.indexEntry(indexOffset))
     yield entry match {
@@ -18,7 +18,7 @@ class PrimitiveWraptFile private (
   }
 }
 
-object PrimitiveWraptFile {
+object PrimFileImpl {
   private class WraptFileBlockSource(dataSegment: Block) extends BlockSource {
     def getBlock(entry: BlockSource.Location) =
       entry match {
@@ -32,13 +32,13 @@ object PrimitiveWraptFile {
       }
   }
   
-  def fromFile(block: Block) = {
+  def fromBlock(block: Block) = {
     for {
       header <- Header.fromBlock(block)
       val stringTable = StringTable.fromFile(block, header.stringTableOffset)
       val index = Index.fromFile(block, Header.Size)
       val dataSegment = block.getSubBlock(header.dataOffset)
-    } yield new PrimitiveWraptFile(header, stringTable, index, 
+    } yield new PrimFileImpl(header, stringTable, index, 
         new WraptFileBlockSource(dataSegment))
   }
 }

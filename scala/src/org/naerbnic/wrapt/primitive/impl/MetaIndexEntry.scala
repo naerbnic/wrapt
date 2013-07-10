@@ -1,6 +1,4 @@
-package org.naerbnic.wrapt.primitive
-
-import java.nio.ByteBuffer
+package org.naerbnic.wrapt.primitive.impl
 import org.naerbnic.wrapt.util.Block
 
 case class MetaIndexEntry(virtualStart: Int, physicalStart: Int, size: Int) {
