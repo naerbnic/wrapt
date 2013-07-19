@@ -228,4 +228,23 @@ object Block {
   }
   
   def concat(blocks: Block*): Block = new ConcatBlock(blocks)
+  
+  private class ZeroBlock(val size: Long) extends Block {
+    def getByteBuffer(offset: Long, size: Int) = {
+      val zeroArray = Array.fill[Byte](size)(0)
+      ByteBuffer.wrap(zeroArray)
+    }
+    
+    def read(dst: ByteBuffer, offset: Long) {
+      require (offset >= 0)
+      require (offset + dst.remaining() <= size)
+      
+      val zeroByte: Byte = 0 
+      while (dst.remaining() > 0) {
+        dst.put(zeroByte)
+      }
+    }
+  }
+  
+  def zeroes(size: Long): Block = new ZeroBlock(size)
 }

@@ -5,11 +5,11 @@ import scala.collection.immutable.SortedSet
 
 trait PrimMap {
   def fields: SortedSet[String]
-  def getValue(field: String): Option[PrimValue]
+  def getValue(field: String): Option[Int]
 }
 
 object PrimMap {
-  def fromMap(map: Map[String, PrimValue]) = new PrimMap {
+  def fromMap(map: Map[String, Int]) = new PrimMap {
     override lazy val fields = SortedSet.empty[String] ++ map.keys
     override def getValue(field: String) = map.get(field)
   }

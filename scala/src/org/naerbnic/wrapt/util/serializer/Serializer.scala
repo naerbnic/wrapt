@@ -5,6 +5,14 @@ import org.naerbnic.wrapt.util.Block
 import scala.Option.option2Iterable
 
 object Serializer {
+  def getAlignSize(n: Int, pos: Long) = {
+    require (n >= 0)
+    require (n < 64)
+    
+    val bitmask = (1L << n) - 1L
+    (- pos) & bitmask
+  }
+  
   private def findMarkOffsets(entitySeq: Seq[FileEntity]) = {
     val mapBuilder = Map.newBuilder[Mark, Long]
     var currPos = 0L
@@ -18,6 +26,10 @@ object Serializer {
         case BlockEntity(gen) => {
           currPos += gen.size
         }
+        
+        case AlignEntity(n) => {
+          currPos += getAlignSize(n, currPos)
+        }
       }
     }
     
@@ -28,11 +40,21 @@ object Serializer {
     val entitySeq = contents.asSeq
     val markOffsets = findMarkOffsets(entitySeq)
     
+    var currPos = 0L
+    
     val blockOpts = for {
       entity <- entitySeq
     } yield entity match {
       case MarkEntity(_) => None
-      case BlockEntity(gen) => Some(gen.createBlock(markOffsets))
+      case BlockEntity(gen) => {
+        currPos += gen.size
+        Some(gen.createBlock(markOffsets))
+      }
+      case AlignEntity(n) => {
+        val alignSize = getAlignSize(n, currPos)
+        currPos += alignSize
+        Some(Block.zeroes(alignSize))
+      }
     }
     
     val blocks = blockOpts.flatten
