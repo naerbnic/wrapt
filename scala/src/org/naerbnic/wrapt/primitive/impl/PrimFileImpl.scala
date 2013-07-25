@@ -35,9 +35,9 @@ object PrimFileImpl {
   def fromBlock(block: Block) = {
     for {
       header <- Header.fromBlock(block)
-      val stringTable = StringTable.fromFile(block, header.stringTableOffset)
-      val index = Index.fromFile(block, Header.Size)
-      val dataSegment = block.getSubBlock(header.dataOffset)
+      stringTable = StringTable.fromFile(block, header.stringTableOffset)
+      index = Index.fromFile(block, Header.Size)
+      dataSegment = block.getSubBlock(header.dataOffset)
     } yield new PrimFileImpl(header, stringTable, index, 
         new WraptFileBlockSource(dataSegment))
   }

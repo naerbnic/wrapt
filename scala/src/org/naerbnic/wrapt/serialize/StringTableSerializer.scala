@@ -5,14 +5,13 @@ import scala.collection.immutable.SortedSet
 import org.naerbnic.wrapt.util.serializer.BlockGenerator
 import org.naerbnic.wrapt.util.Composite
 import org.naerbnic.wrapt.util.serializer.FileEntity
-import org.naerbnic.wrapt.util.serializer.MarkEntity
 import java.nio.charset.Charset
 import org.naerbnic.wrapt.util.Block
-import org.naerbnic.wrapt.util.serializer.BlockEntity
 import org.naerbnic.wrapt.util.serializer.BlockGenerator.LongFunc
+import org.naerbnic.wrapt.util.serializer.FileComponent
 
 class StringTableSerializer private (
-    val contents: Composite[FileEntity],
+    val contents: FileEntity,
     val tableMark: Mark,
     stringMarks: Map[String, Mark]) {
   def getEntryFunc(string: String) = {
@@ -29,21 +28,21 @@ object StringTableSerializer {
     val sortedStrings = SortedSet.empty[String] ++ strings
     
     val tableMark = new Mark()
-    val contentBuilder = Seq.newBuilder[FileEntity]
+    val contentBuilder = Seq.newBuilder[FileComponent]
     val stringMarkBuilder = Map.newBuilder[String, Mark]
     
-    contentBuilder += MarkEntity(tableMark)
+    contentBuilder += FileComponent.ofMark(tableMark)
     
     for (str <- sortedStrings) {
       val stringMark = new Mark()
       stringMarkBuilder += (str -> stringMark)
-      contentBuilder += MarkEntity(stringMark)
-      contentBuilder += BlockEntity(
-          BlockGenerator.fromBlock(stringToBlock(str)))
+      
+      contentBuilder += FileComponent.ofMark(stringMark)
+      contentBuilder += FileComponent.ofBlock(stringToBlock(str))
     }
     
     new StringTableSerializer(
-        Composite(contentBuilder.result(): _*),
+        FileEntity.concat(0, contentBuilder.result()),
         tableMark,
         stringMarkBuilder.result())
   }

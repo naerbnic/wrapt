@@ -3,9 +3,6 @@ package org.naerbnic.wrapt.primitive.impl
 import org.naerbnic.wrapt.util.LongBits._
 import org.naerbnic.wrapt.util.Block
 import java.nio.charset.Charset
-import org.naerbnic.wrapt.{
-  StringValue, BlobValue, IntValue, FloatValue, NullValue, BoolValue
-}
 import org.naerbnic.wrapt.primitive.LitIndexType
 import org.naerbnic.wrapt.primitive.BlockIndexType
 

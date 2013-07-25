@@ -17,8 +17,8 @@ object PrimFileSerializer {
     val tableStrings = (for {
       index <- file.indexes
       value <- file.getValue(index)
-      val strings = valueToTableStrings(value)
-    } yield strings) flatten
+      strings = valueToTableStrings(value)
+    } yield strings) . flatten
     
     val stringTable = StringTableSerializer(tableStrings)
     

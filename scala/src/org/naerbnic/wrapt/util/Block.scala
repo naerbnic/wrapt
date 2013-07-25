@@ -173,7 +173,7 @@ object Block {
     override def reify() = this
   }
   
-  private class ConcatBlock(blocks: Seq[Block]) extends Block {
+  private class ConcatBlock(val blocks: Seq[Block]) extends Block {
     override val size =
       blocks.foldLeft(0L) {(currSize, block) => currSize + block.size}
     
@@ -227,7 +227,17 @@ object Block {
     }
   }
   
-  def concat(blocks: Block*): Block = new ConcatBlock(blocks)
+  def concat(blocks: Block*): Block = {
+    val seqBuilder = Seq.newBuilder[Block]
+    for (block <- blocks) {
+      if (block.isInstanceOf[ConcatBlock]) {
+        seqBuilder ++= block.asInstanceOf[ConcatBlock].blocks
+      } else {
+        seqBuilder += block
+      }
+    }
+    new ConcatBlock(seqBuilder.result())
+  }
   
   private class ZeroBlock(val size: Long) extends Block {
     def getByteBuffer(offset: Long, size: Int) = {
