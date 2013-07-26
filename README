@@ -60,6 +60,7 @@ Format:
   - Meta index entries, in order of increasing ranges. Ranges may not overlap,
     although they may have holes in between them. This index may be binary
     searched in order to find the correct range for an entry.
+- PADDING (to an 8 byte boundary)
 - IndexEntry[index_size] index
   - Index entries. Offsets for data are defined by the meta index.
 

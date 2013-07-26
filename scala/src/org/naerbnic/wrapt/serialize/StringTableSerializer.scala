@@ -7,7 +7,7 @@ import org.naerbnic.wrapt.util.Composite
 import org.naerbnic.wrapt.util.serializer.FileEntity
 import java.nio.charset.Charset
 import org.naerbnic.wrapt.util.Block
-import org.naerbnic.wrapt.util.serializer.BlockGenerator.LongFunc
+import org.naerbnic.wrapt.util.serializer.LongFunc
 import org.naerbnic.wrapt.util.serializer.FileComponent
 
 class StringTableSerializer private (
@@ -15,8 +15,9 @@ class StringTableSerializer private (
     val tableMark: Mark,
     stringMarks: Map[String, Mark]) {
   def getEntryFunc(string: String) = {
-    val stringPos = LongFunc.fromMark(stringMarks(string))
-    (stringPos - LongFunc.fromMark(tableMark)).toInt
+    val stringPos = stringMarks(string).posFunc
+        
+    (stringPos - tableMark.posFunc).toInt
   }
 }
 

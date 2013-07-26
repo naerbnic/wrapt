@@ -3,7 +3,7 @@ package org.naerbnic.wrapt.primitive
 import org.naerbnic.wrapt.util.LongBits._
 import org.naerbnic.wrapt.BasicValue._
 
-sealed abstract class LitIndexType(val code: Int) {
+sealed abstract class LitIndexType(val code: Long) {
   def getValue(data: Long): PrimValue
 }
 

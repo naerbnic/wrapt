@@ -20,8 +20,8 @@ import org.naerbnic.wrapt.primitive.PrimValue
 import org.naerbnic.wrapt.util.Block
 import org.naerbnic.wrapt.util.LongBits.implicitLongBits
 import org.naerbnic.wrapt.util.serializer.BlockGenerator
-import org.naerbnic.wrapt.util.serializer.BlockGenerator.IntFunc
-import org.naerbnic.wrapt.util.serializer.BlockGenerator.LongFunc
+import org.naerbnic.wrapt.util.serializer.IntFunc
+import org.naerbnic.wrapt.util.serializer.LongFunc
 import org.naerbnic.wrapt.util.serializer.FileComponent
 import org.naerbnic.wrapt.util.serializer.FileEntity
 import org.naerbnic.wrapt.util.serializer.Mark
@@ -37,6 +37,7 @@ object ValueSerializer {
     override def blockContents = FileEntity.ofBlock(Block.zeroes(0L))
     override def indexEntry = {
       val entry = (1L << 63) | (ty.code << 60) | data 
+      println(f"${ty.code}%x, $entry%x, $data%x")
       FileEntity.ofGen(BlockGenerator.fromLong(entry))
     }
   }
@@ -64,8 +65,7 @@ object ValueSerializer {
     
     override def indexEntry = {
       val sizeBits = LongFunc.fromConst(contents.size) << 48
-      val offset =
-        LongFunc.fromMark(blockMark) - LongFunc.fromMark(dataSegmentMark)
+      val offset = blockMark.posFunc - dataSegmentMark.posFunc
       val offsetBits = offset.mask(48, 3)
       val typeBits = LongFunc.fromConst(ty.code)
       
@@ -87,8 +87,7 @@ object ValueSerializer {
     }
     
     override def indexEntry = {
-      val offset =
-        LongFunc.fromMark(blockMark) - LongFunc.fromMark(dataSegmentMark)
+      val offset = blockMark.posFunc - dataSegmentMark.posFunc
       val offsetBits = offset.mask(48, 3)
       val typeBits = LongFunc.fromConst(ty.code)
       
