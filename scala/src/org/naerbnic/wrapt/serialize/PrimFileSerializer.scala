@@ -10,6 +10,7 @@ import org.naerbnic.wrapt.util.serializer.FileEntity
 import org.naerbnic.wrapt.util.serializer.IntFunc
 import org.naerbnic.wrapt.util.serializer.LongFunc
 import scala.collection.SortedMap
+import org.naerbnic.wrapt.util.serializer.BlockGenerator
 
 object PrimFileSerializer {
   def valueToTableStrings(value: PrimValue) = {
@@ -23,7 +24,7 @@ object PrimFileSerializer {
       stringTableMark: Mark,
       dataMark: Mark) = {
     FileEntity.concat(3,
-        Seq(FileComponent.ofGen(LongFunc.fromConst(0L).generator),
+        Seq(FileComponent.ofGen(BlockGenerator.fromLong(0L)),
             FileComponent.ofGen(stringTableMark.posFunc.generator),
             FileComponent.ofGen(dataMark.posFunc.generator)))
   }

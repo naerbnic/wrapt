@@ -7,6 +7,8 @@ import org.naerbnic.wrapt.primitive.PrimBasicValue
 import org.naerbnic.wrapt.BasicValue.IntValue
 import org.naerbnic.wrapt.serialize.PrimFileSerializer
 import org.naerbnic.wrapt.BasicValue.FloatValue
+import org.naerbnic.wrapt.primitive.PrimArrayValue
+import org.naerbnic.wrapt.primitive.PrimArray
 
 class SerializeTest extends FunSpec {
   describe ("Serialization") {
@@ -56,6 +58,34 @@ class SerializeTest extends FunSpec {
         override def getValue(index: Int) = index match {
           case 0 => Some(PrimBasicValue(FloatValue(1.21d)))
           case 1 => Some(PrimBasicValue(IntValue(12)))
+          case _ => None
+        }
+      }
+      
+      val entity = PrimFileSerializer.serialize(file)
+      
+      println(entity)
+      
+      val block = entity.toBlock()
+      
+      println(block.size)
+      println(block.asByteBuffer().array().grouped(8).map(x => x.map(y => f"$y%02x").mkString)
+          .mkString(" "))
+    }
+    
+    it ("can serialize arrays") {
+      val file = new PrimFile() {
+        override def indexes = SortedSet(0)
+        override def getValue(index: Int) = index match {
+          case 0 => Some(PrimArrayValue(new PrimArray() {
+            def size = 1
+            def getValue(i: Int) = {
+              i match {
+                case 0 => Some(0)
+                case _ => None
+              }
+            }
+          }))
           case _ => None
         }
       }
